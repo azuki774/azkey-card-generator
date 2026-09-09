@@ -73,18 +73,55 @@ SSG は入力画面や説明ページの事前生成には使えるが、リク�
 Fastify が静的アセットと動的処理の両方を配信する。将来、説明ページが増えた場合は、静的部分
 だけを SSG へ分離することを再検討する。
 
+### 2.5 nginx の位置づけ
+
+nginx は静的ファイル配信、TLS 終端、リバースプロキシ、レスポンスバッファリング、アクセス制御
+などを担当できる。ただし、通常の nginx はアプリケーションランタイムではなく、Azkey API の
+結果とアバターから画像を合成する処理は別途必要になる。
+
+nginx には JavaScript を実行する njs / QuickJS モジュールがあるが、Node.js とは異なり、
+Node.js API や通常のパッケージ解決を提供しない。Sharp をそのまま利用できず、CPU を長く使う
+処理は nginx のワーカーをブロックする。この用途の画像生成を njs や nginx のネイティブモジュール
+として実装することは、保守性と障害分離の面で初期案には採用しない。
+
+デプロイ環境に ingress やロードバランサーがある場合、専用 nginx は必須としない。ベアメタルや
+VM で TLS 終端、リクエスト制限、静的ファイルキャッシュが必要な場合は、Fastify の前段へ任意で
+配置する。
+
+### 2.6 Fastify を使う利点
+
+Node.js 標準の `node:http` だけでも実装は可能だが、Fastify から次の共通機能を得られる。
+
+- ルートごとの入力検証とレスポンススキーマ
+- リクエストライフサイクルの hook と一貫したエラー処理
+- リクエスト ID を含む構造化ログ
+- 静的ファイル、フォーム、テンプレート、レート制限などを必要なものだけ追加する plugin 構成
+- 実ポートを開かずに HTTP ハンドラーを検証できる `inject`
+- `Buffer`、stream、任意の `Content-Type` を返せる通常の Node.js サーバーとしての扱いやすさ
+
+ページコンポーネント、クライアントルーター、hydration、SSG、画像生成などは Fastify 自身の
+責務ではない。そのため UI 機能は少ないが、今回のようなサーバー処理中心の小規模アプリでは、
+必要な仕組みと不要な仕組みの境界を明確にしやすい。
+
 ## 3. 採用しない選択肢
 
-| 選択肢 | MVP で採用しない理由 | 再検討条件 |
-| --- | --- | --- |
-| React / Vue / Next.js | クライアント状態と画面遷移が少なく、ビルド・依存・API 境界が増える | ブラウザ上の高度な編集機能を追加する |
-| Python + Flask / FastAPI | 現時点のプロジェクト方針として Python を避ける | Python の画像処理資産が必要になる |
-| SSG 単体 | リクエスト時の API 呼び出し、画像生成、一時保存を実行できない | 動的処理をブラウザへ移す |
-| SSG + 別 API | この規模では配布・監視対象を分ける利点が小さい | 静的ページが独立して増える |
-| Celery / Redis | 短時間で完結する同期処理に対して運用対象が増える | 生成が長時間化し、再試行やキュー制御が必要になる |
-| PostgreSQL / SQLite | 永続化対象がなく、生成履歴も要件外 | アカウント、履歴、テンプレートを保存する |
-| ブラウザ Canvas | フォント差や CORS の影響を受け、出力再現性と外部画像制御が弱くなる | 利用者によるリアルタイム編集を優先する |
-| Go | 実行環境は小さくできるが、SVG・フォント・画像処理の選定と検証が増える | Node.js の実測が運用条件を満たさない |
+| 選択肢 | 動的処理 | UI・ビルドの特徴 | このプロジェクトでの判断 |
+| --- | --- | --- | --- |
+| Fastify + EJS | Node.js 上で Sharp、一時保存、API を直接扱える | SSR HTML と最小限のブラウザ JS。必要な plugin だけ追加 | 初期案。サーバー処理中心で構成が直接的 |
+| Next.js | Route Handler で実装可能 | React、App Router、Server/Client Components、キャッシュ規則を採用 | React UI や画面遷移が増える場合に有力。現状は機能範囲が広い |
+| Nuxt | Nitro の server route で実装可能 | Vue、universal/client/hybrid rendering、ファイルベース規約を採用 | Vue UI や複数画面が必要になる場合に有力。現状は機能範囲が広い |
+| Astro SSG | ビルド時に確定できない生成要求は処理できない | 静的 HTML と islands が中心 | 単体では要件を満たさない |
+| Astro + server adapter | Server Endpoint で実装可能 | 静的ページと on-demand route を共存でき、ブラウザ JS を抑えやすい | 有力な次点。コンテンツページが増える場合に再検討 |
+| nginx | 通常構成では画像生成を実行しない | 静的配信とリバースプロキシに特化 | 必要なら前段で利用。アプリ本体の代替にはしない |
+| nginx + njs / QuickJS | 限定的なサーバー処理は可能だが Sharp を直接使えない | Node.js とは異なる API と実行モデル | 画像処理の実装・保守負担が大きいため不採用 |
+| Node.js `node:http` | 実装可能 | 最小構成だが検証、ログ、hook、エラー処理を自前化 | Fastify の薄い共通機能を使う方が保守しやすい |
+| Python + Flask / FastAPI | 実装可能 | Python の画像処理資産を利用できる | 現時点のプロジェクト方針として避ける |
+| Go | 実装可能 | 単一バイナリ化しやすいが、SVG・フォント・画像処理を別途選定 | Node.js の実測が運用条件を満たさない場合に再検討 |
+| ブラウザ Canvas | ブラウザ内で生成可能 | CORS、フォント差、端末差の影響を受ける | サーバーでの一時保存・出力再現性と合わない |
+
+Next.js、Nuxt、Astro のいずれも、サーバー実行モードを使えば要件を実現できる。「できるか」
+ではなく、現時点で必要のない UI レンダリング規約やビルド機構まで採用する価値があるかで判断する。
+この初期案では Fastify を選ぶが、画面・コンテンツ・クライアント状態が増える場合は再評価する。
 
 ## 4. システム構成
 
@@ -290,5 +327,13 @@ tests/
 - [Fastify technical principles](https://fastify.dev/docs/latest/Reference/Principles/)
 - [Sharp documentation](https://sharp.pixelplumbing.com/)
 - [Sharp compositing](https://sharp.pixelplumbing.com/api-composite/)
+- [nginx JavaScript module](https://nginx.org/en/docs/njs/)
+- [nginx njs execution model](https://nginx.org/en/docs/njs/integration.html)
+- [Next.js Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers)
+- [Next.js Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
+- [Nuxt rendering modes](https://nuxt.com/docs/4.x/guide/concepts/rendering)
+- [Nuxt server directory](https://nuxt.com/docs/4.x/directory-structure/server)
+- [Astro on-demand rendering](https://docs.astro.build/en/guides/on-demand-rendering/)
+- [Astro server endpoints](https://docs.astro.build/en/guides/endpoints/)
 - [Misskey API](https://misskey-hub.net/ja/docs/for-developers/api/)
 - [Misskey API endpoint documentation notice](https://misskey-hub.net/ja/docs/for-developers/api/endpoints/)
