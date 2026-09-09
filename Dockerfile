@@ -13,7 +13,7 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
-FROM gcr.io/distroless/nodejs24-debian12:nonroot
+FROM gcr.io/distroless/nodejs24-debian13:nonroot
 
 WORKDIR /app
 ENV NODE_ENV=production
