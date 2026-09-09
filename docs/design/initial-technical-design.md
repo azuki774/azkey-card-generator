@@ -1,82 +1,107 @@
-# azkey-card-generator 技術選定・基本設計
+# azkey-card-generator 初期技術選定・基本設計
 
-- 文書状態: Proposed
+- 文書状態: Initial Proposal
 - 対象リリース: MVP
 - 最終更新: 2026-09-09
 
+> [!IMPORTANT]
+> 本書は実装前の初期案であり、技術構成や挙動を確約するものではありません。検証や実装を
+> 通じて変更される可能性があります。実装と本書に差異がある場合は実装を正とし、差異が
+> 判明した箇所は実装を妨げない範囲で追って文書へ反映します。
+
 ## 1. 結論
 
-MVP は、Python の単一 Web アプリケーションとして実装する。
+MVP は、Node.js の小さな単一 Web アプリケーションとして実装する案を第一候補とする。
+Python は採用候補から外す。実際の資源使用量は実装後に計測し、採用判断を見直せるものとする。
 
 | 領域 | 採用候補 | 方針 |
 | --- | --- | --- |
-| 言語 | Python 3.13 以上 | 画像処理との親和性と実装の小ささを優先 |
-| Web | Flask 3.1 系 | ルート数が少ない同期型アプリに必要十分 |
-| HTML | Jinja | サーバーサイドレンダリング |
-| ブラウザ | HTML + CSS + 最小限の Vanilla JS | SPA、Node.js ビルドを導入しない |
-| 画像生成 | Pillow 12 系 | 合成、リサイズ、角丸、文字計測・描画に使用 |
-| HTTP | HTTPX 0.28 系 | タイムアウト、接続プール、テスト差し替えを明示しやすい |
-| 本番 WSGI | Gunicorn 23 系 | 複数ワーカー、タイムアウト、終了処理を担う |
-| パッケージ管理 | uv + `pyproject.toml` + lockfile | 再現可能な依存解決と高速な CI |
-| テスト | pytest | 単体、HTTP 結合、ゴールデン画像テスト |
-| 静的検査 | Ruff + mypy | フォーマット、lint、型検査 |
+| 実行環境・言語 | Node.js + TypeScript | サーバーと画面補助コードで言語を統一 |
+| Web | Fastify | 必要な機能だけを追加できる低オーバーヘッドな HTTP サーバー |
+| HTML | EJS | サーバーサイドレンダリング |
+| ブラウザ | HTML + CSS + 最小限の Vanilla JavaScript | SPA やクライアント hydration を導入しない |
+| 画像生成 | SVG テンプレート + Sharp | 合成、リサイズ、角丸、SVG の PNG 化に使用 |
+| 外部 HTTP | Node.js 標準 `fetch` | 追加クライアントを避け、タイムアウトとリダイレクトを明示制御 |
+| パッケージ管理 | npm + lockfile | 再現可能な依存解決 |
+| テスト | Node.js test runner | 単体、HTTP 結合、ゴールデン画像テスト |
+| 静的検査 | TypeScript + ESLint | 型検査、lint |
 | 配布 | OCI コンテナ | フォントを含む実行環境を固定 |
-| 一時保存 | ローカル一時ディレクトリ | MVP は単一レプリカ、既定 TTL 15分 |
+| 一時保存 | ローカル一時ディレクトリ | 保持期間は運用設定で指定 |
 
-実装開始時には lockfile で具体的なバージョンを固定し、更新ツールによる定期更新を行う。
-上表の版は設計時点の系列であり、互換性・脆弱性確認なしに固定値として扱わない。
+実装開始時に、互換性とサポート状況を確認したバージョンを lockfile で固定し、更新ツールに
+よる定期更新を行う。この文書では、未検証のバージョン範囲を確約しない。
 
 ## 2. 選定理由
 
-### 2.1 Python + Flask
+### 2.1 Node.js + Fastify
 
-- 入力、生成、結果表示の3経路程度で、API スキーマ生成や SPA 用バックエンドを必要としない。
-- Flask は Jinja と静的ファイル配信の基本機能を持ち、薄い Web 層を維持できる。
-- 同期的な外部 API 呼び出しと CPU 時間の短い画像生成は WSGI ワーカーで扱える。
-- アプリケーションサービスを Flask のグローバル状態から分離すれば、将来 ASGI や別 UI へ
-  移す場合も中核処理を再利用できる。
+- 入力、生成、結果表示に限定された経路で、API スキーマ生成や SPA 用バックエンドを必要としない。
+- Fastify は小規模なアプリでも必要なルート、入力検証、ログ、静的ファイル配信を段階的に
+  追加できる。
+- Next.js のようなフルスタックフレームワーク、クライアント側ランタイム、hydration は
+  使用しない。Node.js プロセスと必要な依存だけで構成する。
+- Fastify と Sharp の資源使用量はデプロイ候補環境で計測する。Node.js が重いかどうかは
+  フレームワーク名だけで判断せず、生成時のメモリを含む実測で判断する。
+- アプリケーションサービスを Fastify の状態から分離し、将来別ランタイムや別 UI へ移す
+  場合も中核処理を再利用できるようにする。
 
-### 2.2 Pillow
+### 2.2 SVG テンプレート + Sharp
 
-- アバターのデコード、EXIF 方向補正、切り抜き、縮小、透過合成、PNG 出力を一つの
-  ライブラリで扱える。
-- TrueType/OpenType フォントによる文字描画、文字領域の計測、アンカー指定ができる。
+- カードの背景、図形、テキストを SVG テンプレートで表し、Sharp で PNG に変換する。
+- アバターのデコード、EXIF 方向補正、切り抜き、縮小、透過合成、PNG 出力を Sharp で扱う。
+- 仮デザインの位置・色・余白を SVG と設定値へ集約し、正式デザインへ差し替えやすくする。
 - 画像の最大バイト数だけでなく、デコード後の最大ピクセル数も検査する。
 - 表示の再現性を保つため、OS のフォント探索には依存せずフォントファイルを同梱する。
 
 ### 2.3 サーバーサイド HTML
 
 画面遷移とクライアント状態がほぼなく、フォーム POST 後の結果ページだけで要件を満たす。
-Jinja と通常の HTTP フォームを基準にすれば、JavaScript は送信中表示や二重送信防止の
+EJS と通常の HTTP フォームを基準にすれば、JavaScript は送信中表示や二重送信防止の
 漸進的な改善に限定できる。フロントエンド専用のパッケージ管理やビルドは不要とする。
+
+### 2.4 SSG を主構成にしない理由
+
+SSG は入力画面や説明ページの事前生成には使えるが、リクエストごとの Azkey API 呼び出し、
+画像生成、一時保存、期限判定を実行できない。これらを実現するには、次のいずれかが別途必要になる。
+
+- 静的サイトとは別の API サーバー
+- サーバーレス関数と共有オブジェクトストレージ
+- ブラウザ内の画像生成
+
+別 API を置く案は配布物と構成要素が増える。ブラウザ内生成はアバターの CORS、フォント差、
+出力再現性、一時的なサーバー保存という要件と相性がよくない。そのため専用 SSG は導入せず、
+Fastify が静的アセットと動的処理の両方を配信する。将来、説明ページが増えた場合は、静的部分
+だけを SSG へ分離することを再検討する。
 
 ## 3. 採用しない選択肢
 
 | 選択肢 | MVP で採用しない理由 | 再検討条件 |
 | --- | --- | --- |
 | React / Vue / Next.js | クライアント状態と画面遷移が少なく、ビルド・依存・API 境界が増える | ブラウザ上の高度な編集機能を追加する |
-| FastAPI | OpenAPI を提供する外部 API や async 処理が主目的ではない | 公開 JSON API が主要機能になる |
-| Celery / Redis | 数秒の同期処理に対して運用対象が増える | 生成が長時間化し、再試行やキュー制御が必要になる |
+| Python + Flask / FastAPI | 現時点のプロジェクト方針として Python を避ける | Python の画像処理資産が必要になる |
+| SSG 単体 | リクエスト時の API 呼び出し、画像生成、一時保存を実行できない | 動的処理をブラウザへ移す |
+| SSG + 別 API | この規模では配布・監視対象を分ける利点が小さい | 静的ページが独立して増える |
+| Celery / Redis | 短時間で完結する同期処理に対して運用対象が増える | 生成が長時間化し、再試行やキュー制御が必要になる |
 | PostgreSQL / SQLite | 永続化対象がなく、生成履歴も要件外 | アカウント、履歴、テンプレートを保存する |
 | ブラウザ Canvas | フォント差や CORS の影響を受け、出力再現性と外部画像制御が弱くなる | 利用者によるリアルタイム編集を優先する |
-| Node.js + Sharp | 実現可能だが、SSR HTML と小規模な画像処理では Python/Pillow の方が構成を小さくできる | チームの TypeScript 運用資産が決定的に大きい |
+| Go | 実行環境は小さくできるが、SVG・フォント・画像処理の選定と検証が増える | Node.js の実測が運用条件を満たさない |
 
 ## 4. システム構成
 
 ```mermaid
 flowchart LR
-    B[Browser] -->|GET /, POST /cards| W[Flask Web]
+    B[Browser] -->|GET /, POST /cards| W[Fastify Web]
     W --> A[Application Service]
     A --> C[Azkey API Client]
     C --> Z[Azkey API]
     A --> F[Safe Avatar Fetcher]
     F --> M[Azkey media / allowed CDN]
-    A --> R[Card Renderer / Pillow]
+    A --> R[Card Renderer / SVG + Sharp]
     R --> S[Temporary Store]
     W -->|preview / download| S
 ```
 
-1プロセス内でも責務を分け、Web フレームワークへの依存を外周へ閉じ込める。
+同一プロセス内でも責務を分け、Web フレームワークへの依存を外周へ閉じ込める。
 
 ### 4.1 コンポーネント責務
 
@@ -94,11 +119,11 @@ Web 層から API の生 JSON をテンプレートやレンダラーへ直接�
 
 ```text
 CardProfile
-  display_name: str
-  handle: str
-  notes_count: int
+  displayName: string
+  handle: string
+  notesCount: number
   avatar: decoded image | default avatar
-  generated_at: timezone-aware datetime
+  generatedAt: timezone-aware date
 ```
 
 ## 5. HTTP インターフェース
@@ -116,7 +141,7 @@ CardProfile
 - POST 後は Post/Redirect/Get とし、更新操作による再生成を避ける。
 - 期限切れは結果ページ・画像とも 410、未知の ID は 404 とする。
 - 画像レスポンスは `Cache-Control: private, no-store` を初期値とする。
-- `artifact_id` は 128 bit 以上のエントロピーを持つ URL-safe な乱数にする。
+- `artifact_id` は暗号学的に安全で、推測が現実的に困難な URL-safe の乱数にする。
 - ダウンロード名は固定接頭辞と安全に正規化した名前を使い、ヘッダー注入を防ぐ。
 
 ## 6. 外部 API と画像取得
@@ -134,7 +159,8 @@ JSON の POST を行う。例えば `AZKEY_BASE_URL=https://azkey.example.com` �
 - 接続、読み取り、全体に個別のタイムアウトを設定する。
 - 応答 JSON を実行時スキーマで検証し、欠損可能項目に既定動作を定める。
 - 404相当、レート制限、5xx、タイムアウト、形式不正を内部エラー型へ変換する。
-- 上流への自動再試行は接続失敗と一部 5xx に限定し、短いバックオフで最大1回とする。
+- 上流への自動再試行を行う場合は、安全に再試行できる障害に限定し、回数とバックオフは
+  対象環境での検証後に設定する。
 
 ### 6.2 アバター取得
 
@@ -173,10 +199,10 @@ API が返した URL であっても信頼済みとは扱わない。
 | `AZKEY_API_TOKEN` | no | 必要な環境のみ secret として注入 |
 | `AVATAR_ALLOWED_HOSTS` | yes | カンマ区切りのメディア許可ホスト |
 | `ARTIFACT_DIR` | no | 生成物ディレクトリ。既定 `/tmp/azkey-cards` |
-| `ARTIFACT_TTL_SECONDS` | no | 既定 `900` |
+| `ARTIFACT_TTL_SECONDS` | yes | 生成物の保持期間。運用要件に基づいて指定 |
 | `ARTIFACT_MAX_BYTES` | no | 一時領域のアプリ上限 |
-| `DISPLAY_TIMEZONE` | no | 既定 `Asia/Tokyo` |
-| `RATE_LIMIT_PER_MINUTE` | no | 既定 `10` |
+| `DISPLAY_TIMEZONE` | yes | 画像へ表示する時刻のタイムゾーン |
+| `RATE_LIMIT_PER_MINUTE` | yes | 運用要件に基づくレート制限値 |
 | `LOG_LEVEL` | no | 既定 `INFO` |
 
 環境変数名と既定値は実装時に設定クラスとサンプル env ファイルで一元管理する。
@@ -186,23 +212,23 @@ API が返した URL であっても信頼済みとは扱わない。
 ## 9. 推奨ディレクトリ構成
 
 ```text
-src/azkey_card_generator/
-  app.py                 # application factory
-  config.py
+src/
+  app.ts                 # application factory
+  config.ts
   web/
-    routes.py
+    routes.ts
     templates/
     static/
   domain/
-    models.py
-    errors.py
+    models.ts
+    errors.ts
   services/
-    generate_card.py
+    generate-card.ts
   adapters/
-    azkey_client.py
-    avatar_fetcher.py
-    pillow_renderer.py
-    local_artifact_store.py
+    azkey-client.ts
+    avatar-fetcher.ts
+    sharp-renderer.ts
+    local-artifact-store.ts
 assets/
   fonts/
   images/
@@ -218,7 +244,8 @@ tests/
 ## 10. テスト戦略
 
 - **単体テスト**: 入力正規化、表示名 fallback、数値整形、文字収容、期限判定、URL/IP 検証。
-- **HTTP 結合テスト**: Flask test client と HTTP モックを使い、正常系とエラー変換を確認。
+- **HTTP 結合テスト**: Fastify の `inject` と `fetch` のテスト差し替えを使い、正常系と
+  エラー変換を確認。
 - **ゴールデン画像**: 固定フォント、固定時刻、固定アバターで代表 PNG を生成し、差分を検査。
   OS/圧縮差を避けるため、必要に応じてピクセル差と許容値で比較する。
 - **契約テスト**: 機密情報を除去した Azkey レスポンス fixture でデシリアライズを確認。
@@ -230,16 +257,16 @@ tests/
 
 - multi-stage build の OCI イメージを作り、アプリ、固定依存、必要なフォントだけを含める。
 - 非 root ユーザー、read-only root filesystem、専用 tmpfs/ephemeral volume で実行する。
-- Gunicorn のワーカー数は CPU と画像生成時のメモリ実測から決める。ワーカーごとの
-  メモリ上限を見込み、過剰な並列化をしない。
+- Node.js プロセスの並列度は CPU と画像生成時のメモリ実測から決める。プロセスごとの
+  メモリ使用量を見込み、過剰な並列化をしない。
 - HTTP のボディ上限、同時接続数、レート制限はアプリだけでなくリバースプロキシでも設ける。
-- MVP は1レプリカとし、ローリング更新時に既存生成物が失われ得ることを許容する。
+- MVP はローカル一時領域を共有できる実行構成とし、更新時に既存生成物が失われ得ることを許容する。
 - graceful shutdown の猶予を生成処理の最大時間より長く取る。
 
 ## 12. 実装順序
 
 1. `AZKEY_BASE_URL` の対象環境で API 互換性を確認し、匿名化した API fixture を確定する。
-2. Python プロジェクト、品質ツール、コンテナ、CI の最小構成を作る。
+2. Node.js / TypeScript プロジェクト、品質ツール、コンテナ、CI の最小構成を作る。
 3. 内部モデル、Azkey クライアント、制限付きアバター取得を実装する。
 4. 固定データからレンダラーを実装し、ゴールデン画像を確定する。
 5. 一時保存、TTL、清掃を実装する。
@@ -255,12 +282,13 @@ tests/
 - Prometheus メトリクスを MVP に含めるか、プラットフォームのアクセスログから始めるか。
 - ゴールデン画像のピクセル完全一致を採用できる実行環境を CI で固定できるか。
 - Noto Sans JP 等の採用フォントと、その配布物に必要なライセンス表記。
+- Node.js + Fastify + Sharp の実測資源使用量がデプロイ環境の条件に適合するか。
 
 ## 14. 参考資料
 
-- [Flask documentation](https://flask.palletsprojects.com/en/stable/)
-- [Flask installation / supported Python](https://flask.palletsprojects.com/en/stable/installation/)
-- [Pillow ImageDraw](https://pillow.readthedocs.io/en/stable/reference/ImageDraw.html)
-- [Pillow text anchors](https://pillow.readthedocs.io/en/stable/handbook/text-anchors.html)
+- [Fastify documentation](https://fastify.dev/docs/latest/)
+- [Fastify technical principles](https://fastify.dev/docs/latest/Reference/Principles/)
+- [Sharp documentation](https://sharp.pixelplumbing.com/)
+- [Sharp compositing](https://sharp.pixelplumbing.com/api-composite/)
 - [Misskey API](https://misskey-hub.net/ja/docs/for-developers/api/)
 - [Misskey API endpoint documentation notice](https://misskey-hub.net/ja/docs/for-developers/api/endpoints/)
