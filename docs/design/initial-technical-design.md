@@ -2,7 +2,7 @@
 
 - 文書状態: Initial Proposal
 - 対象リリース: MVP
-- 最終更新: 2026-09-09
+- 最終更新: 2026-09-10
 
 > [!IMPORTANT]
 > 本書は実装前の初期案であり、技術構成や挙動を確約するものではありません。検証や実装を
@@ -26,7 +26,7 @@ Python は採用候補から外す。実際の資源使用量は実装後に計�
 | テスト | Node.js test runner | 単体、HTTP 結合、ゴールデン画像テスト |
 | 静的検査 | TypeScript + ESLint | 型検査、lint |
 | 配布 | OCI コンテナ | フォントを含む実行環境を固定 |
-| 一時保存 | ローカル一時ディレクトリ | 保持期間は運用設定で指定 |
+| 画像応答 | リクエスト処理中のメモリ + JSON | 表面・裏面を base64 で同一応答に含め、サーバーへ保存しない |
 
 実装開始時に、互換性とサポート状況を確認したバージョンを lockfile で固定し、更新ツールに
 よる定期更新を行う。この文書では、未検証のバージョン範囲を確約しない。
@@ -67,11 +67,13 @@ Python は採用候補から外す。実際の資源使用量は実装後に計�
 - 画像の最大バイト数だけでなく、デコード後の最大ピクセル数も検査する。
 - 表示の再現性を保つため、OS のフォント探索には依存せずフォントファイルを同梱する。
 
-### 2.3 サーバーサイド HTML
+### 2.3 サーバーサイド HTML とブラウザ応答
 
-画面遷移とクライアント状態がほぼなく、フォーム POST 後の結果ページだけで要件を満たす。
-EJS と通常の HTTP フォームを基準にすれば、JavaScript は送信中表示や二重送信防止の
-漸進的な改善に限定できる。フロントエンド専用のパッケージ管理やビルドは不要とする。
+入力ページは EJS で返し、カード生成は最小限の Vanilla JavaScript が `POST /cards` を
+`fetch` して JSON を受け取る。レスポンス内の表面・裏面 PNG を Blob URL に変換し、同じ
+ページ内でプレビューと個別ダウンロードを行う。結果ページやクライアントルーターは作らず、
+再読み込み・ページ移動でクライアント状態を破棄する。フロントエンド専用のパッケージ管理や
+ビルドは不要とする。
 
 EJS テンプレート自体は TypeScript の型検査対象ではない。テンプレートへ渡す view model を
 TypeScript の型として定義し、`satisfies` などでレンダリング呼び出し側を検査する。テンプレート
@@ -79,15 +81,15 @@ TypeScript の型として定義し、`satisfies` などでレンダリング呼
 
 ### 2.4 SSG を主構成にしない理由
 
-SSG は入力画面や説明ページの事前生成には使えるが、リクエストごとの azkey API 呼び出し、
-画像生成、一時保存、期限判定を実行できない。これらを実現するには、次のいずれかが別途必要になる。
+SSG は入力画面や説明ページの事前生成には使えるが、リクエストごとの azkey API 呼び出しと
+画像生成を実行できない。これらを実現するには、次のいずれかが別途必要になる。
 
 - 静的サイトとは別の API サーバー
 - サーバーレス関数と共有オブジェクトストレージ
 - ブラウザ内の画像生成
 
 別 API を置く案は配布物と構成要素が増える。ブラウザ内生成はアバターの CORS、フォント差、
-出力再現性、一時的なサーバー保存という要件と相性がよくない。そのため専用 SSG は導入せず、
+出力再現性という要件と相性がよくない。そのため専用 SSG は導入せず、
 Fastify が静的アセットと動的処理の両方を配信する。将来、説明ページが増えた場合は、静的部分
 だけを SSG へ分離することを再検討する。
 
@@ -125,7 +127,7 @@ Node.js 標準の `node:http` だけでも実装は可能だが、Fastify から
 
 | 選択肢 | 動的処理 | UI・ビルドの特徴 | このプロジェクトでの判断 |
 | --- | --- | --- | --- |
-| Fastify + EJS | Node.js 上で Sharp、一時保存、API を直接扱える | SSR HTML と最小限のブラウザ JS。必要な plugin だけ追加 | 仮決定。サーバー処理中心で構成が直接的 |
+| Fastify + EJS | Node.js 上で Sharp、API、インメモリ応答を直接扱える | SSR HTML と最小限のブラウザ JS。必要な plugin だけ追加 | 仮決定。サーバー処理中心で構成が直接的 |
 | Next.js | Route Handler で実装可能 | React、App Router、Server/Client Components、キャッシュ規則を採用 | React UI や画面遷移が増える場合に有力。現状は機能範囲が広い |
 | Nuxt | Nitro の server route で実装可能 | Vue、universal/client/hybrid rendering、ファイルベース規約を採用 | Vue UI や複数画面が必要になる場合に有力。現状は機能範囲が広い |
 | Astro SSG | ビルド時に確定できない生成要求は処理できない | 静的 HTML と islands が中心 | 単体では要件を満たさない |
@@ -135,7 +137,7 @@ Node.js 標準の `node:http` だけでも実装は可能だが、Fastify から
 | Node.js `node:http` | 実装可能 | 最小構成だが検証、ログ、hook、エラー処理を自前化 | Fastify の薄い共通機能を使う方が保守しやすい |
 | Python + Flask / FastAPI | 実装可能 | Python の画像処理資産を利用できる | 現時点のプロジェクト方針として避ける |
 | Go | 実装可能 | 単一バイナリ化しやすいが、SVG・フォント・画像処理を別途選定 | Node.js の実測が運用条件を満たさない場合に再検討 |
-| ブラウザ Canvas | ブラウザ内で生成可能 | CORS、フォント差、端末差の影響を受ける | サーバーでの一時保存・出力再現性と合わない |
+| ブラウザ Canvas | ブラウザ内で生成可能 | CORS、フォント差、端末差の影響を受ける | サーバー側生成による出力再現性と合わない |
 
 Next.js、Nuxt、Astro のいずれも、サーバー実行モードを使えば要件を実現できる。「できるか」
 ではなく、現時点で必要のない UI レンダリング規約やビルド機構まで採用する価値があるかで判断する。
@@ -152,8 +154,9 @@ flowchart LR
     A --> F[Safe Avatar Fetcher]
     F --> M[azkey media / allowed CDN]
     A --> R[Card Renderer / SVG + Sharp]
-    R --> S[Temporary Store]
-    W -->|preview / download| S
+    R -->|front/back PNG in memory| W
+    W -->|JSON base64 response| B
+    B -->|Blob URLs / individual downloads| B
 ```
 
 同一プロセス内でも責務を分け、Web フレームワークへの依存を外周へ閉じ込める。
@@ -162,12 +165,12 @@ flowchart LR
 
 | コンポーネント | 責務 |
 | --- | --- |
-| Web | 入力受付、HTTP ステータス、HTML/画像レスポンス、リクエスト ID |
+| Web | 入力受付、HTTP ステータス、HTML/JSON レスポンス、リクエスト ID |
 | Application Service | ユースケース進行、エラー分類、モデル変換 |
 | azkey API Client | `users/show` 相当の呼び出し、応答検証、azkey 差分の吸収 |
 | Safe Avatar Fetcher | URL/IP/MIME/サイズ検証、制限付きダウンロード |
 | Card Renderer | 入力モデルから決定的な表面・裏面 PNG バイト列を生成 |
-| Temporary Store | ランダム ID で保存、読取、期限判定、削除 |
+| Card Response Serializer | 表面・裏面 PNG を base64 とメタデータへ変換し、JSON 応答を組み立てる |
 
 Web 層から API の生 JSON をテンプレートやレンダラーへ直接渡さず、次のような内部モデルへ
 変換する。
@@ -183,27 +186,67 @@ CardProfile
 
 ## 5. HTTP インターフェース
 
+この素材・設計段階の PR では、`POST /cards`、Sharp による実レンダラー、JSON シリアライザー、
+Blob URL を接続するブラウザ JavaScript はまだ実装しない。以下は次の実装で固定して使う契約であり、
+現在のアプリは入力ページと素材の足場を提供する。
+
 | Method | Path | 用途 | 成功時 |
 | --- | --- | --- | --- |
 | GET | `/` | 入力フォーム | 200 HTML |
-| POST | `/cards` | 入力検証、取得、生成、保存 | 303 で結果へ |
-| GET | `/cards/{artifact_id}` | プレビューと期限表示 | 200 HTML |
-| GET | `/cards/{artifact_id}/images/front` | 表面のブラウザ内プレビュー | 200 image/png |
-| GET | `/cards/{artifact_id}/images/back` | 裏面のブラウザ内プレビュー | 200 image/png |
-| GET | `/cards/{artifact_id}/downloads/front` | 表面を添付ファイルとして取得 | 200 image/png |
-| GET | `/cards/{artifact_id}/downloads/back` | 裏面を添付ファイルとして取得 | 200 image/png |
+| POST | `/cards` | 入力検証、取得、表面・裏面生成 | 200 JSON（両面を含む） |
 | GET | `/healthz` | プロセス生存確認 | 200 text/plain |
-| GET | `/readyz` | 設定・一時領域の利用可否 | 200 / 503 |
+| GET | `/readyz` | 必須設定・外部接続先の利用可否 | 200 / 503 |
 
-- POST 後は Post/Redirect/Get とし、更新操作による再生成を避ける。
-- 期限切れは結果ページ・画像とも 410、未知の ID は 404 とする。
-- 画像レスポンスは `Cache-Control: private, no-store` を初期値とする。
-- `artifact_id` は暗号学的に安全で、推測が現実的に困難な URL-safe の乱数にする。
-- ダウンロード名は固定接頭辞と安全に正規化した名前を使い、ヘッダー注入を防ぐ。
-- 表面・裏面は同一 `artifact_id` のペアとして扱い、片面だけを公開・延命しない。
+- `POST /cards` は `application/x-www-form-urlencoded` の `username` フィールドを受け付ける。
+- 成功時は `200 application/json` とし、サーバーは PNG をファイルやデータベースへ保存しない。
+- 応答には `Cache-Control: no-store` と `X-Content-Type-Options: nosniff` を設定する。
+- JSON の `data` は改行なしの標準 base64、`mediaType` は `image/png`、`fileName` は安全な固定名とする。
+- ブラウザは `data` をデコードして Blob URL を作り、`fileName` をダウンロード名として表面・裏面を個別に提供する。
+- クライアントは表示更新時に古い Blob URL を revoke し、再読み込み・ページ移動後に結果を復元しない。
 - テンプレート素材は `assets/card-templates/<template-name>/{front,back}` に配置する。各面の
   `base.png`、`icons/`、`value-frames/`、`icon-frames/` は、将来のデザイン差し替えと追加に使う。
   MVP ではテンプレート選択 UI、テンプレート manifest の確定、素材を使った実際のレンダラー実装は対象外とする。
+
+### 5.1 成功レスポンス契約
+
+```json
+{
+  "generatedAt": "2026-09-10T12:34:56.000Z",
+  "cards": {
+    "front": {
+      "data": "<standard-base64-without-line-breaks>",
+      "mediaType": "image/png",
+      "fileName": "azkey-card-front.png"
+    },
+    "back": {
+      "data": "<standard-base64-without-line-breaks>",
+      "mediaType": "image/png",
+      "fileName": "azkey-card-back.png"
+    }
+  }
+}
+```
+
+`generatedAt` は UTC の ISO 8601 文字列とし、`cards.front` と `cards.back` は常に同じ応答に
+含める。`data` は PNG バイト列を標準 base64 で表した文字列で、改行を含めない。クライアントは
+`mediaType` を Blob の MIME タイプに使い、未知の MIME タイプは表示・ダウンロードに使わない。
+
+### 5.2 エラーレスポンス契約
+
+失敗時の `Content-Type` は `application/json` とし、次の形式を使う。
+
+```json
+{
+  "error": {
+    "code": "invalid_username",
+    "message": "ユーザー名の形式を確認してください。"
+  }
+}
+```
+
+入力不備は 400、ユーザー不在は 404、レート制限は 429、azkey の障害・タイムアウトは
+502/504、画像生成失敗は 500 とする。`code` は機械処理向けの固定値、`message` は利用者向けの
+安全な文面とし、内部例外・接続先・パス・スタックトレースを含めない。
 
 ## 6. 外部 API と画像取得
 
@@ -235,23 +278,21 @@ API が返した URL であっても信頼済みとは扱わない。
 - SVG は受け付けず、MVP は PNG/JPEG/WebP のラスター画像だけをデコードする。
 - 失敗時はカード生成全体を失敗させず、既定アバターへフォールバックする。
 
-## 7. 一時保存と削除
+## 7. 生成結果のライフサイクル
 
-### 7.1 MVP 実装
+### 7.1 MVP のインメモリ方針
 
-- 専用ディレクトリ配下に `<artifact_id>/front.png`、`<artifact_id>/back.png` と最小限の共有メタデータを保存する。
-- ファイルは一時名へ書き、同一ファイルシステム内の rename で公開して部分読取を防ぐ。
-- 保存時刻または期限をメタデータとして保持し、期限判定をファイル名に依存させない。
-- バックグラウンド清掃を定期実行し、起動時にも期限切れを削除する。
-- 取得時にも期限を検査するため、清掃間隔中の期限切れを公開しない。
-- 表面・裏面のどちらか一方が欠損・期限切れの場合はペア全体を取得不能として扱う。
-- 容量上限を設け、超過時は期限切れと古い生成物を優先削除する。
+- Card Renderer は表面・裏面の PNG バイト列をリクエスト処理中のメモリで生成する。
+- Card Response Serializer が両面を base64 化し、成功 JSON を返した時点でサーバー側の生成結果を破棄する。
+- ファイル、データベース、オブジェクトストレージ、バックアップには保存しない。
+- ブラウザは JSON から作った Blob URL をページ内の表示と個別ダウンロードにだけ使う。
+- ページ再読み込み・ページ移動・タブ終了時にブラウザの結果は失われ、安定 URL や履歴は提供しない。
 
-### 7.2 スケール時の境界
+### 7.2 将来の永続化境界
 
-`ArtifactStore` をインターフェース化する。複数レプリカが必要になった時点で、共有
-オブジェクトストレージと TTL ライフサイクルへ置き換える。ローカル保存のまま複数
-レプリカにはせず、sticky session を正しさの前提にしない。
+安定 URL、履歴、再ダウンロードが必要になった場合は、Web/API 層から保存先を直接参照せず、
+表面・裏面を一組で扱う保存抽象化を追加する。その時点で TTL、削除、アクセス制御、容量、
+バックアップの設計を別途決定する。MVP にはこの保存抽象化やサーバー側ルートを導入しない。
 
 ## 8. 設定
 
@@ -260,9 +301,6 @@ API が返した URL であっても信頼済みとは扱わない。
 | `AZKEY_BASE_URL` | yes | 唯一の接続先オリジン。例: `https://azkey.example.com` |
 | `AZKEY_API_TOKEN` | no | 必要な環境のみ secret として注入 |
 | `AVATAR_ALLOWED_HOSTS` | yes | カンマ区切りのメディア許可ホスト |
-| `ARTIFACT_DIR` | no | 生成物ディレクトリ。既定 `/tmp/azkey-cards` |
-| `ARTIFACT_TTL_SECONDS` | yes | 生成物の保持期間。運用要件に基づいて指定 |
-| `ARTIFACT_MAX_BYTES` | no | 一時領域のアプリ上限 |
 | `DISPLAY_TIMEZONE` | yes | 画像へ表示する時刻のタイムゾーン |
 | `RATE_LIMIT_PER_MINUTE` | yes | 運用要件に基づくレート制限値 |
 | `LOG_LEVEL` | no | 既定 `INFO` |
@@ -290,7 +328,6 @@ src/
     azkey-client.ts
     avatar-fetcher.ts
     sharp-renderer.ts
-    local-artifact-store.ts
 assets/
   fonts/
   images/
@@ -313,29 +350,29 @@ tests/
   golden/
 ```
 
-小規模な間は抽象化を増やしすぎず、外部 HTTP、時刻、乱数、一時保存、画像生成という
-副作用の境界だけを差し替え可能にする。
+小規模な間は抽象化を増やしすぎず、外部 HTTP、時刻、乱数、画像生成、JSON シリアライズという
+副作用の境界だけを差し替え可能にする。MVP では保存の境界を設けず、将来永続化が必要に
+なった時点で保存抽象化を追加する。
 
 ## 10. テスト戦略
 
-- **単体テスト**: 入力正規化、表示名 fallback、数値整形、文字収容、期限判定、URL/IP 検証。
-- **HTTP 結合テスト**: Fastify の `inject` と `fetch` のテスト差し替えを使い、正常系と
-  エラー変換を確認。
+- **単体テスト**: 入力正規化、表示名 fallback、数値整形、文字収容、URL/IP 検証、base64 応答の組み立て。
+- **HTTP 結合テスト**: Fastify の `inject` と `fetch` のテスト差し替えを使い、表面・裏面を含む
+  JSON 成功応答、`no-store` ヘッダー、エラー変換を確認。
 - **ゴールデン画像**: 固定フォント、固定時刻、固定アバターで代表 PNG を生成し、差分を検査。
   OS/圧縮差を避けるため、必要に応じてピクセル差と許容値で比較する。
 - **契約テスト**: 機密情報を除去した azkey レスポンス fixture でデシリアライズを確認。
 - **セキュリティテスト**: private IP、リダイレクト、巨大レスポンス、画像爆弾、壊れた画像、
   パストラバーサル、ヘッダー注入を確認。
-- **コンテナ smoke test**: 非 root、read-only rootfs、一時領域のみ書込可能な条件で生成する。
+- **コンテナ smoke test**: 非 root、read-only rootfs 条件で入力受付とインメモリ生成応答を確認する。
 
 ## 11. デプロイ方針
 
 - multi-stage build の OCI イメージを作り、アプリ、固定依存、必要なフォントだけを含める。
-- 非 root ユーザー、read-only root filesystem、専用 tmpfs/ephemeral volume で実行する。
+- 非 root ユーザー、read-only root filesystem で実行する。MVP は生成結果の書き込み用ボリュームを必要としない。
 - Node.js プロセスの並列度は CPU と画像生成時のメモリ実測から決める。プロセスごとの
   メモリ使用量を見込み、過剰な並列化をしない。
 - HTTP のボディ上限、同時接続数、レート制限はアプリだけでなくリバースプロキシでも設ける。
-- MVP はローカル一時領域を共有できる実行構成とし、更新時に既存生成物が失われ得ることを許容する。
 - graceful shutdown の猶予を生成処理の最大時間より長く取る。
 
 ## 12. 実装順序
@@ -344,8 +381,8 @@ tests/
 2. Node.js / TypeScript プロジェクト、品質ツール、コンテナ、CI の最小構成を作る。
 3. 内部モデル、azkey クライアント、制限付きアバター取得を実装する。
 4. 固定データからレンダラーを実装し、ゴールデン画像を確定する。
-5. 一時保存、TTL、清掃を実装する。
-6. SSR フォーム、結果、エラー画面を接続する。
+5. 表面・裏面の JSON 応答契約と最小限の Blob URL クライアントを接続する。
+6. SSR フォーム、生成中表示、エラー表示を接続する。
 7. レート制限、ログ、メトリクス、ヘルスチェックを追加する。
 8. セキュリティ・ブラウザ・コンテナ smoke test 後に MVP を公開する。
 
