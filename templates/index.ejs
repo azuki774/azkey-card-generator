@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="azkey ユーザ向けプロフィールカードを作成できるジェネレータです">
+    <title>azkey card generator</title>
+    <link rel="stylesheet" href="/assets/styles.css">
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="color-wash color-wash--top" aria-hidden="true"></div>
+      <div class="color-wash color-wash--side" aria-hidden="true"></div>
+
+      <header class="site-header content-width">
+        <a class="brand" href="/" aria-label="azkey card generator ホーム">
+          <span class="brand-mark" aria-hidden="true">a</span>
+          <span class="brand-name">azkey card<br>generator</span>
+        </a>
+        <span class="service-badge"><span class="badge-dot" aria-hidden="true"></span>公式サービス</span>
+      </header>
+
+      <main>
+        <section class="hero content-width" aria-labelledby="page-title">
+          <div class="hero-copy">
+            <p class="eyebrow"><span aria-hidden="true">✦</span> PROFILE CARD MAKER</p>
+            <h1 id="page-title">azkey プロフィールカード生成</h1>
+            <p class="hero-description">azkeyの公開プロフィール情報を使用して、プロフィールカードを生成します。</p>
+          </div>
+          <div class="hero-sparkle hero-sparkle--one" aria-hidden="true">✦</div>
+          <div class="hero-sparkle hero-sparkle--two" aria-hidden="true">✧</div>
+        </section>
+
+        <section class="generator-panel content-width" aria-label="プロフィールカード作成">
+          <div class="input-column">
+            <div class="section-heading">
+              <span class="step-number">01</span>
+              <div>
+                <p class="section-kicker">START HERE</p>
+                <h2>ユーザー名を入力</h2>
+              </div>
+            </div>
+
+            <div class="form-area">
+              <label for="username">azkeyユーザー名</label>
+              <div class="input-wrap">
+                <span class="input-prefix" aria-hidden="true">@</span>
+                <input id="username" name="username" type="text" placeholder="@username" autocomplete="off" aria-describedby="username-hint">
+              </div>
+              <p id="username-hint" class="input-hint"><span aria-hidden="true">ⓘ</span> ユーザー名の先頭に @ をつけて入力してください</p>
+              <button class="primary-button" type="button">
+                <span>カードを作る</span>
+                <span class="button-arrow" aria-hidden="true">→</span>
+              </button>
+            </div>
+
+            <p class="privacy-note"><span class="lock-icon" aria-hidden="true">⌑</span> 入力されたユーザー名をもとに、azkey上の公開プロフィール情報を取得します</p>
+          </div>
+
+          <div class="preview-column">
+            <div class="preview-heading">
+              <div class="section-heading section-heading--preview">
+                <span class="step-number step-number--pink">02</span>
+                <div>
+                  <p class="section-kicker">YOUR CARD</p>
+                  <h2>カードプレビュー</h2>
+                </div>
+              </div>
+              <span class="preview-status">未生成</span>
+            </div>
+            <div class="card-placeholder employee-card-ratio" role="img" aria-label="プロフィールカードプレビューは未生成です">
+              <div class="placeholder-orbit placeholder-orbit--one" aria-hidden="true"></div>
+              <div class="placeholder-orbit placeholder-orbit--two" aria-hidden="true"></div>
+              <div class="placeholder-content">
+                <div class="placeholder-avatar" aria-hidden="true"></div>
+                <div class="placeholder-lines" aria-hidden="true"><span></span><span></span><span></span></div>
+                <p>生成したカードが<br>ここに表示されます</p>
+              </div>
+            </div>
+            <button class="download-button" type="button" disabled><span aria-hidden="true">↓</span> PNGでダウンロード</button>
+          </div>
+        </section>
+
+        <section class="info-section content-width" aria-label="サービス情報">
+          <div class="info-card info-card--source">
+            <span class="info-icon" aria-hidden="true">⌘</span>
+            <div><h2>ソースコード</h2><a href="https://github.com/azuki774/azkey-card-generator">GitHubで見る <span aria-hidden="true">↗</span></a></div>
+          </div>
+          <div class="info-card info-card--license">
+            <span class="info-icon" aria-hidden="true">©</span>
+            <div><h2>ライセンス</h2><a href="https://github.com/azuki774/azkey-card-generator/blob/master/LICENSE">MIT License <span aria-hidden="true">↗</span></a></div>
+          </div>
+          <div class="info-card info-card--notice">
+            <span class="info-icon" aria-hidden="true">!</span>
+            <div><h2>ご利用にあたって</h2><p>本サービスの利用・生成画像の取り扱いは、利用者自身の責任で行ってください。運営者は本サービスの利用または生成画像によって生じた損害について責任を負いません。第三者に迷惑をかける用途での利用はおやめください。</p></div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer content-width">
+        <p>azkey card generator</p>
+        <p>azuki@azkey.azuki.blue</p>
+      </footer>
+    </div>
+  </body>
+</html>

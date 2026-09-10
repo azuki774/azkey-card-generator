@@ -79,7 +79,7 @@ TypeScript の型として定義し、`satisfies` などでレンダリング呼
 
 ### 2.4 SSG を主構成にしない理由
 
-SSG は入力画面や説明ページの事前生成には使えるが、リクエストごとの Azkey API 呼び出し、
+SSG は入力画面や説明ページの事前生成には使えるが、リクエストごとの azkey API 呼び出し、
 画像生成、一時保存、期限判定を実行できない。これらを実現するには、次のいずれかが別途必要になる。
 
 - 静的サイトとは別の API サーバー
@@ -94,7 +94,7 @@ Fastify が静的アセットと動的処理の両方を配信する。将来、
 ### 2.5 nginx の位置づけ
 
 nginx は静的ファイル配信、TLS 終端、リバースプロキシ、レスポンスバッファリング、アクセス制御
-などを担当できる。ただし、通常の nginx はアプリケーションランタイムではなく、Azkey API の
+などを担当できる。ただし、通常の nginx はアプリケーションランタイムではなく、azkey API の
 結果とアバターから画像を合成する処理は別途必要になる。
 
 nginx には JavaScript を実行する njs / QuickJS モジュールがあるが、Node.js とは異なり、
@@ -147,10 +147,10 @@ Next.js、Nuxt、Astro のいずれも、サーバー実行モードを使えば
 flowchart LR
     B[Browser] -->|GET /, POST /cards| W[Fastify Web]
     W --> A[Application Service]
-    A --> C[Azkey API Client]
-    C --> Z[Azkey API]
+    A --> C[azkey API Client]
+    C --> Z[azkey API]
     A --> F[Safe Avatar Fetcher]
-    F --> M[Azkey media / allowed CDN]
+    F --> M[azkey media / allowed CDN]
     A --> R[Card Renderer / SVG + Sharp]
     R --> S[Temporary Store]
     W -->|preview / download| S
@@ -164,7 +164,7 @@ flowchart LR
 | --- | --- |
 | Web | 入力受付、HTTP ステータス、HTML/画像レスポンス、リクエスト ID |
 | Application Service | ユースケース進行、エラー分類、モデル変換 |
-| Azkey API Client | `users/show` 相当の呼び出し、応答検証、Azkey 差分の吸収 |
+| azkey API Client | `users/show` 相当の呼び出し、応答検証、azkey 差分の吸収 |
 | Safe Avatar Fetcher | URL/IP/MIME/サイズ検証、制限付きダウンロード |
 | Card Renderer | 入力モデルから決定的に PNG バイト列を生成 |
 | Temporary Store | ランダム ID で保存、読取、期限判定、削除 |
@@ -201,7 +201,7 @@ CardProfile
 
 ## 6. 外部 API と画像取得
 
-### 6.1 Azkey API
+### 6.1 azkey API
 
 MVP は必須環境変数 `AZKEY_BASE_URL` で指定されたオリジンの `/api/users/show` 相当へ
 JSON の POST を行う。例えば `AZKEY_BASE_URL=https://azkey.example.com` なら、接続先は
@@ -210,7 +210,7 @@ JSON の POST を行う。例えば `AZKEY_BASE_URL=https://azkey.example.com` �
 必要な応答項目は `username`、`name`、`host`、`avatarUrl`、`notesCount` とする。
 
 - 認証トークンなしで公開情報を取得できる構成を第一候補とする。
-- トークンが必要な Azkey 環境では環境変数または secret mount から注入し、ログへ出さない。
+- トークンが必要な azkey 環境では環境変数または secret mount から注入し、ログへ出さない。
 - 接続、読み取り、全体に個別のタイムアウトを設定する。
 - 応答 JSON を実行時スキーマで検証し、欠損可能項目に既定動作を定める。
 - 404相当、レート制限、5xx、タイムアウト、形式不正を内部エラー型へ変換する。
@@ -222,7 +222,7 @@ JSON の POST を行う。例えば `AZKEY_BASE_URL=https://azkey.example.com` �
 API が返した URL であっても信頼済みとは扱わない。
 
 - 許可 scheme は HTTPS を既定とし、開発環境のみ明示設定で HTTP を許可する。
-- ホストは Azkey のオリジンと設定済み CDN allowlist に限定する。
+- ホストは azkey のオリジンと設定済み CDN allowlist に限定する。
 - DNS 解決結果が loopback、private、link-local、multicast、reserved の場合は拒否する。
 - リダイレクトは既定で拒否する。許可する場合も各遷移先を同じ規則で再検証する。
 - 圧縮後の受信上限、Content-Type、デコード後ピクセル数を検査する。
@@ -303,7 +303,7 @@ tests/
   エラー変換を確認。
 - **ゴールデン画像**: 固定フォント、固定時刻、固定アバターで代表 PNG を生成し、差分を検査。
   OS/圧縮差を避けるため、必要に応じてピクセル差と許容値で比較する。
-- **契約テスト**: 機密情報を除去した Azkey レスポンス fixture でデシリアライズを確認。
+- **契約テスト**: 機密情報を除去した azkey レスポンス fixture でデシリアライズを確認。
 - **セキュリティテスト**: private IP、リダイレクト、巨大レスポンス、画像爆弾、壊れた画像、
   パストラバーサル、ヘッダー注入を確認。
 - **コンテナ smoke test**: 非 root、read-only rootfs、一時領域のみ書込可能な条件で生成する。
@@ -322,7 +322,7 @@ tests/
 
 1. `AZKEY_BASE_URL` の対象環境で API 互換性を確認し、匿名化した API fixture を確定する。
 2. Node.js / TypeScript プロジェクト、品質ツール、コンテナ、CI の最小構成を作る。
-3. 内部モデル、Azkey クライアント、制限付きアバター取得を実装する。
+3. 内部モデル、azkey クライアント、制限付きアバター取得を実装する。
 4. 固定データからレンダラーを実装し、ゴールデン画像を確定する。
 5. 一時保存、TTL、清掃を実装する。
 6. SSR フォーム、結果、エラー画面を接続する。
@@ -331,7 +331,7 @@ tests/
 
 ## 13. 技術的な未決事項
 
-- 対象 Azkey の正確な API エンドポイント、認証要否、エラー形式、アバター配信元。
+- 対象 azkey の正確な API エンドポイント、認証要否、エラー形式、アバター配信元。
 - `AZKEY_BASE_URL` 未設定・不正時にプロセスを起動失敗させる際の運用プラットフォーム側の扱い。
 - レート制限を単一プロセス内に置くか、リバースプロキシ側だけで強制するか。
 - Prometheus メトリクスを MVP に含めるか、プラットフォームのアクセスログから始めるか。
