@@ -34,4 +34,5 @@ docker run --rm -p 3000:3000 azkey-card-generator
 ```
 
 GitHub Actions は `master` への push を 7 文字の短縮コミット SHA で、形式が
-`X.Y.Z` のタグを同じ SemVer タグで GitHub Container Registry へ公開します。
+`X.Y.Z` または `X.Y.Z-rc.1` などの SemVer prerelease タグを同じタグ名で
+GitHub Container Registry へ公開します。`v` プレフィックスや build metadata は対象外です。
