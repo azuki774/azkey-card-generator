@@ -20,6 +20,8 @@ ENV NODE_ENV=production
 ENV PORT=3000
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY templates ./templates
+COPY public ./public
 COPY package.json ./
 
 USER nonroot
