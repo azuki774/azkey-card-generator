@@ -166,7 +166,7 @@ flowchart LR
 | Application Service | ユースケース進行、エラー分類、モデル変換 |
 | azkey API Client | `users/show` 相当の呼び出し、応答検証、azkey 差分の吸収 |
 | Safe Avatar Fetcher | URL/IP/MIME/サイズ検証、制限付きダウンロード |
-| Card Renderer | 入力モデルから決定的に PNG バイト列を生成 |
+| Card Renderer | 入力モデルから決定的な表面・裏面 PNG バイト列を生成 |
 | Temporary Store | ランダム ID で保存、読取、期限判定、削除 |
 
 Web 層から API の生 JSON をテンプレートやレンダラーへ直接渡さず、次のような内部モデルへ
@@ -188,8 +188,10 @@ CardProfile
 | GET | `/` | 入力フォーム | 200 HTML |
 | POST | `/cards` | 入力検証、取得、生成、保存 | 303 で結果へ |
 | GET | `/cards/{artifact_id}` | プレビューと期限表示 | 200 HTML |
-| GET | `/cards/{artifact_id}/image` | ブラウザ内プレビュー | 200 image/png |
-| GET | `/cards/{artifact_id}/download` | 添付ファイルとして取得 | 200 image/png |
+| GET | `/cards/{artifact_id}/images/front` | 表面のブラウザ内プレビュー | 200 image/png |
+| GET | `/cards/{artifact_id}/images/back` | 裏面のブラウザ内プレビュー | 200 image/png |
+| GET | `/cards/{artifact_id}/downloads/front` | 表面を添付ファイルとして取得 | 200 image/png |
+| GET | `/cards/{artifact_id}/downloads/back` | 裏面を添付ファイルとして取得 | 200 image/png |
 | GET | `/healthz` | プロセス生存確認 | 200 text/plain |
 | GET | `/readyz` | 設定・一時領域の利用可否 | 200 / 503 |
 
@@ -198,6 +200,10 @@ CardProfile
 - 画像レスポンスは `Cache-Control: private, no-store` を初期値とする。
 - `artifact_id` は暗号学的に安全で、推測が現実的に困難な URL-safe の乱数にする。
 - ダウンロード名は固定接頭辞と安全に正規化した名前を使い、ヘッダー注入を防ぐ。
+- 表面・裏面は同一 `artifact_id` のペアとして扱い、片面だけを公開・延命しない。
+- テンプレート素材は `assets/card-templates/<template-name>/{front,back}` に配置する。各面の
+  `base.png`、`icons/`、`value-frames/`、`icon-frames/` は、将来のデザイン差し替えと追加に使う。
+  MVP ではテンプレート選択 UI、テンプレート manifest の確定、素材を使った実際のレンダラー実装は対象外とする。
 
 ## 6. 外部 API と画像取得
 
@@ -233,11 +239,12 @@ API が返した URL であっても信頼済みとは扱わない。
 
 ### 7.1 MVP 実装
 
-- 専用ディレクトリ配下に `<artifact_id>.png` と最小限のメタデータを保存する。
+- 専用ディレクトリ配下に `<artifact_id>/front.png`、`<artifact_id>/back.png` と最小限の共有メタデータを保存する。
 - ファイルは一時名へ書き、同一ファイルシステム内の rename で公開して部分読取を防ぐ。
 - 保存時刻または期限をメタデータとして保持し、期限判定をファイル名に依存させない。
 - バックグラウンド清掃を定期実行し、起動時にも期限切れを削除する。
 - 取得時にも期限を検査するため、清掃間隔中の期限切れを公開しない。
+- 表面・裏面のどちらか一方が欠損・期限切れの場合はペア全体を取得不能として扱う。
 - 容量上限を設け、超過時は期限切れと古い生成物を優先削除する。
 
 ### 7.2 スケール時の境界
@@ -287,6 +294,19 @@ src/
 assets/
   fonts/
   images/
+  card-templates/
+    README.md
+    default/
+      front/
+        base.png
+        icons/
+        value-frames/
+        icon-frames/
+      back/
+        base.png
+        icons/
+        value-frames/
+        icon-frames/
 tests/
   unit/
   integration/
