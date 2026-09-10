@@ -63,21 +63,40 @@
                 <span class="step-number step-number--pink">02</span>
                 <div>
                   <p class="section-kicker">YOUR CARD</p>
-                  <h2>カードプレビュー</h2>
+                  <h2>カードプレビュー（表裏）</h2>
                 </div>
               </div>
               <span class="preview-status">未生成</span>
             </div>
-            <div class="card-placeholder employee-card-ratio" role="img" aria-label="プロフィールカードプレビューは未生成です">
-              <div class="placeholder-orbit placeholder-orbit--one" aria-hidden="true"></div>
-              <div class="placeholder-orbit placeholder-orbit--two" aria-hidden="true"></div>
-              <div class="placeholder-content">
-                <div class="placeholder-avatar" aria-hidden="true"></div>
-                <div class="placeholder-lines" aria-hidden="true"><span></span><span></span><span></span></div>
-                <p>生成したカードが<br>ここに表示されます</p>
-              </div>
+            <div class="card-previews" aria-label="プロフィールカードの表裏プレビュー">
+              <section class="card-preview" aria-labelledby="front-card-title">
+                <h3 id="front-card-title">表面 <span aria-hidden="true">／ FRONT</span></h3>
+                <div class="card-placeholder employee-card-ratio" role="img" aria-label="プロフィールカード表面のプレビューは未生成です">
+                  <div class="placeholder-orbit placeholder-orbit--one" aria-hidden="true"></div>
+                  <div class="placeholder-orbit placeholder-orbit--two" aria-hidden="true"></div>
+                  <div class="placeholder-content">
+                    <div class="placeholder-avatar" aria-hidden="true"></div>
+                    <div class="placeholder-lines" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <p>表面のカードが<br>ここに表示されます</p>
+                  </div>
+                </div>
+                <button class="download-button" type="button" disabled aria-label="表面のPNGでダウンロード（未生成）"><span aria-hidden="true">↓</span> PNGでダウンロード</button>
+              </section>
+
+              <section class="card-preview" aria-labelledby="back-card-title">
+                <h3 id="back-card-title">裏面 <span aria-hidden="true">／ BACK</span></h3>
+                <div class="card-placeholder employee-card-ratio card-placeholder--back" role="img" aria-label="プロフィールカード裏面のプレビューは未生成です">
+                  <div class="placeholder-orbit placeholder-orbit--one" aria-hidden="true"></div>
+                  <div class="placeholder-orbit placeholder-orbit--two" aria-hidden="true"></div>
+                  <div class="placeholder-content">
+                    <div class="placeholder-avatar" aria-hidden="true"></div>
+                    <div class="placeholder-lines" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <p>裏面のカードが<br>ここに表示されます</p>
+                  </div>
+                </div>
+                <button class="download-button" type="button" disabled aria-label="裏面のPNGでダウンロード（未生成）"><span aria-hidden="true">↓</span> PNGでダウンロード</button>
+              </section>
             </div>
-            <button class="download-button" type="button" disabled><span aria-hidden="true">↓</span> PNGでダウンロード</button>
           </div>
         </section>
 

@@ -49,9 +49,15 @@ h1 span { color:transparent; background:linear-gradient(90deg,var(--purple),#bb6
 .lock-icon { color:#9a92b8; font-size:15px; }
 .preview-heading { display:flex; align-items:center; justify-content:space-between; }
 .preview-status { padding:6px 10px; color:#a59ead; border-radius:6px; background:#f4f2f6; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Noto Sans Mono',monospace; font-size:9px; }
-.card-placeholder { position:relative; display:grid; min-height:229px; margin-top:30px; overflow:hidden; place-items:center; border:1px dashed #d8d2e5; border-radius:16px; background:linear-gradient(135deg,#fbfaff,#f5f8fc); aspect-ratio:1.58; }
+.card-previews { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:30px; }
+.card-preview h3 { margin:0 0 10px; color:#6e687d; font-size:11px; font-weight:800; letter-spacing:.02em; }
+.card-preview h3 span { color:#aaa4b6; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Noto Sans Mono',monospace; font-size:8px; font-weight:500; letter-spacing:.08em; }
+.card-placeholder { position:relative; display:grid; min-height:0; overflow:hidden; place-items:center; border:1px dashed #d8d2e5; border-radius:16px; background:linear-gradient(135deg,#fbfaff,#f5f8fc); aspect-ratio:1.58; }
 .card-placeholder::before { position:absolute; top:-90px; right:-40px; width:220px; height:220px; border-radius:50%; background:rgba(192,177,247,.14); content:''; }
 .card-placeholder::after { position:absolute; bottom:-100px; left:-50px; width:200px; height:200px; border-radius:50%; background:rgba(112,224,223,.12); content:''; }
+.card-placeholder--back { background:linear-gradient(135deg,#f7fffe,#f3f9fb); }
+.card-placeholder--back::before { background:rgba(113,217,221,.15); }
+.card-placeholder--back::after { background:rgba(45,174,181,.08); }
 .placeholder-content { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; }
 .placeholder-avatar { width:43px; height:43px; margin-bottom:13px; border:2px solid #d8d2e7; border-radius:50%; background:#ece8f3; }
 .placeholder-lines { display:flex; flex-direction:column; gap:5px; align-items:center; margin-bottom:15px; }
@@ -63,7 +69,7 @@ h1 span { color:transparent; background:linear-gradient(90deg,var(--purple),#bb6
 .placeholder-orbit { position:absolute; border:1px solid rgba(118,84,245,.12); border-radius:50%; transform:rotate(-24deg); }
 .placeholder-orbit--one { width:270px; height:125px; }
 .placeholder-orbit--two { width:340px; height:170px; border-color:rgba(239,116,185,.1); transform:rotate(28deg); }
-.download-button { display:block; width:100%; height:42px; margin-top:14px; color:#b4afba; border:1px solid #e5e2e9; border-radius:10px; background:#faf9fb; cursor:not-allowed; font:inherit; font-size:10px; font-weight:700; }
+.download-button { display:block; width:100%; height:42px; margin-top:10px; color:#b4afba; border:1px solid #e5e2e9; border-radius:10px; background:#faf9fb; cursor:not-allowed; font:inherit; font-size:10px; font-weight:700; }
 .download-button span { margin-right:5px; font-size:14px; }
 .info-section { z-index:1; display:grid; grid-template-columns:1fr 1fr 1.58fr; gap:14px; padding:23px 0 0; }
 .info-card { display:flex; min-height:99px; gap:12px; align-items:flex-start; padding:20px 19px; border:1px solid rgba(226,222,235,.9); border-radius:15px; background:rgba(255,255,255,.7); }
@@ -89,7 +95,7 @@ h1 span { color:transparent; background:linear-gradient(90deg,var(--purple),#bb6
   .input-column,.preview-column { padding:29px 24px 28px; }
   .input-column { border-right:0; border-bottom:1px solid var(--line); }
   .form-area { padding-top:31px; }
-  .card-placeholder { min-height:210px; }
+  .card-previews { grid-template-columns:1fr; }
   .info-section { grid-template-columns:1fr 1fr; }
   .info-card--notice { grid-column:1 / -1; }
   .site-footer { display:block; padding-top:38px; line-height:2; }
