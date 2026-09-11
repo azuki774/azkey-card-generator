@@ -6,6 +6,7 @@
     <meta name="description" content="azkey ユーザ向けプロフィールカードを作成できるジェネレータです">
     <title>azkey card generator</title>
     <link rel="stylesheet" href="/assets/styles.css">
+    <script src="/assets/app.js" defer></script>
   </head>
   <body>
     <div class="page-shell">
@@ -25,7 +26,7 @@
           <div class="hero-copy">
             <p class="eyebrow"><span aria-hidden="true">✦</span> PROFILE CARD MAKER</p>
             <h1 id="page-title">azkey プロフィールカード生成</h1>
-            <p class="hero-description">azkeyの公開プロフィール情報を使用して、プロフィールカードを生成します。</p>
+            <p class="hero-description">ユーザー名からプロフィールカードを生成します。</p>
           </div>
           <div class="hero-sparkle hero-sparkle--one" aria-hidden="true">✦</div>
           <div class="hero-sparkle hero-sparkle--two" aria-hidden="true">✧</div>
@@ -41,20 +42,20 @@
               </div>
             </div>
 
-            <div class="form-area">
+            <form class="form-area" method="post" action="/cards">
               <label for="username">azkeyユーザー名</label>
               <div class="input-wrap">
-                <span class="input-prefix" aria-hidden="true">@</span>
-                <input id="username" name="username" type="text" placeholder="@username" autocomplete="off" aria-describedby="username-hint">
+                <input id="username" name="username" type="text" placeholder="@username" autocomplete="off" aria-describedby="username-hint form-error" required>
               </div>
               <p id="username-hint" class="input-hint"><span aria-hidden="true">ⓘ</span> ユーザー名の先頭に @ をつけて入力してください</p>
-              <button class="primary-button" type="button">
+              <p id="form-error" class="form-error" role="alert" hidden></p>
+              <button class="primary-button" type="submit">
                 <span>カードを作る</span>
                 <span class="button-arrow" aria-hidden="true">→</span>
               </button>
-            </div>
+            </form>
 
-            <p class="privacy-note"><span class="lock-icon" aria-hidden="true">⌑</span> 入力されたユーザー名をもとに、azkey上の公開プロフィール情報を取得します</p>
+            <p class="privacy-note"><span class="lock-icon" aria-hidden="true">⌑</span> 入力されたユーザー名をもとにカード画像を生成します（現在は仮プロフィールを使用）</p>
           </div>
 
           <div class="preview-column">
@@ -63,15 +64,15 @@
                 <span class="step-number step-number--pink">02</span>
                 <div>
                   <p class="section-kicker">YOUR CARD</p>
-                  <h2>カードプレビュー（表裏）</h2>
+                  <h2>カードプレビュー</h2>
                 </div>
               </div>
-              <span class="preview-status">未生成</span>
+              <span id="preview-status" class="preview-status" aria-live="polite">未生成</span>
             </div>
             <div class="card-previews" aria-label="プロフィールカードの表裏プレビュー">
               <section class="card-preview" aria-labelledby="front-card-title">
                 <h3 id="front-card-title">表面 <span aria-hidden="true">／ FRONT</span></h3>
-                <div class="card-placeholder employee-card-ratio" role="img" aria-label="プロフィールカード表面のプレビューは未生成です">
+                <div class="card-placeholder employee-card-ratio" role="img" aria-label="プロフィールカード表面のプレビューは未生成です" data-card-placeholder="front">
                   <div class="placeholder-orbit placeholder-orbit--one" aria-hidden="true"></div>
                   <div class="placeholder-orbit placeholder-orbit--two" aria-hidden="true"></div>
                   <div class="placeholder-content">
@@ -80,12 +81,13 @@
                     <p>表面のカードが<br>ここに表示されます</p>
                   </div>
                 </div>
-                <button class="download-button" type="button" disabled aria-label="表面のPNGでダウンロード（未生成）"><span aria-hidden="true">↓</span> PNGでダウンロード</button>
+                <img class="card-image" data-card-image="front" alt="プロフィールカードの表面" hidden>
+                <a class="download-button" data-download-link="front" aria-disabled="true"><span aria-hidden="true">↓</span> PNGでダウンロード</a>
               </section>
 
               <section class="card-preview" aria-labelledby="back-card-title">
                 <h3 id="back-card-title">裏面 <span aria-hidden="true">／ BACK</span></h3>
-                <div class="card-placeholder employee-card-ratio card-placeholder--back" role="img" aria-label="プロフィールカード裏面のプレビューは未生成です">
+                <div class="card-placeholder employee-card-ratio card-placeholder--back" role="img" aria-label="プロフィールカード裏面のプレビューは未生成です" data-card-placeholder="back">
                   <div class="placeholder-orbit placeholder-orbit--one" aria-hidden="true"></div>
                   <div class="placeholder-orbit placeholder-orbit--two" aria-hidden="true"></div>
                   <div class="placeholder-content">
@@ -94,7 +96,8 @@
                     <p>裏面のカードが<br>ここに表示されます</p>
                   </div>
                 </div>
-                <button class="download-button" type="button" disabled aria-label="裏面のPNGでダウンロード（未生成）"><span aria-hidden="true">↓</span> PNGでダウンロード</button>
+                <img class="card-image" data-card-image="back" alt="プロフィールカードの裏面" hidden>
+                <a class="download-button" data-download-link="back" aria-disabled="true"><span aria-hidden="true">↓</span> PNGでダウンロード</a>
               </section>
             </div>
           </div>

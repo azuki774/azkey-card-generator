@@ -186,9 +186,8 @@ CardProfile
 
 ## 5. HTTP インターフェース
 
-この素材・設計段階の PR では、`POST /cards`、Sharp による実レンダラー、JSON シリアライザー、
-Blob URL を接続するブラウザ JavaScript はまだ実装しない。以下は次の実装で固定して使う契約であり、
-現在のアプリは入力ページと素材の足場を提供する。
+`POST /cards`、Sharp による表裏レンダラー、JSON シリアライザー、Blob URL を接続する
+ブラウザ JavaScript は実装済みであり、以下の契約を使用する。
 
 | Method | Path | 用途 | 成功時 |
 | --- | --- | --- | --- |
@@ -205,7 +204,8 @@ Blob URL を接続するブラウザ JavaScript はまだ実装しない。以�
 - クライアントは表示更新時に古い Blob URL を revoke し、再読み込み・ページ移動後に結果を復元しない。
 - テンプレート素材は `assets/card-templates/<template-name>/{front,back}` に配置する。各面の
   `base.png`、`icons/`、`value-frames/`、`icon-frames/` は、将来のデザイン差し替えと追加に使う。
-  MVP ではテンプレート選択 UI、テンプレート manifest の確定、素材を使った実際のレンダラー実装は対象外とする。
+  MVP では `default` の表裏 `base.png` にプロフィール情報を合成し、テンプレート選択 UI と
+  manifest の確定は対象外とする。
 
 ### 5.1 成功レスポンス契約
 

@@ -8,15 +8,17 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "tsx --test tests/app.test.ts",
+    "test": "tsx --test tests/*.test.ts",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts"
   },
   "dependencies": {
+    "@fastify/formbody": "^9.0.0",
     "@fastify/static": "^10.1.3",
     "@fastify/view": "^12.0.0",
     "ejs": "^6.0.1",
-    "fastify": "^5.0.0"
+    "fastify": "^5.0.0",
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
     "@types/ejs": "^3.1.5",
