@@ -2,6 +2,9 @@ export interface Profile {
   username: string;
   displayName: string;
   notesCount: number;
+  appRole?: string;
+  userId?: string;
+  avatar?: Buffer;
 }
 
 export interface ProfileSource {

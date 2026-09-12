@@ -13,6 +13,8 @@ azkey（Misskey フォーク）の公開ユーザー情報から、社員証風�
 `/api/users/show` から取得し、既定の接続先は `azkey.azuki.blue` です。別のインスタンスを使う場合は
 `MISSKEY_BASE_URL`（例: `http://127.0.0.1:4100`）で上書きできます。アバターの追加許可オリジンは
 `MISSKEY_AVATAR_ALLOWED_ORIGINS` にカンマ区切りで指定します。
+表面カードの実装座標と文字フィッティングは[表面カードレイアウト](docs/design/front-layout.md)
+に記載しています。
 
 ## 開発
 
@@ -42,7 +44,8 @@ const user = await client.getUserInfo('@alice');
 const avatar = await client.getAvatar(user);
 ```
 
-取得したアバターは現在のカード画像にはまだ描画していません。
+カードレンダラーは任意のアバター入力を受け取りますが、現在のMisskeyプロフィール取得経路では
+取得したアバターをレンダラーへまだ渡していません。
 
 生成画像はサーバーへ保存せず、再読み込みやページ移動で破棄されます。画像レンダリングにはSharpと
 `assets/card-templates/default` の仮素材を使い、コンテナではNoto Sans CJKを読み込みます。
