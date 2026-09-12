@@ -7,14 +7,15 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { renderCards, type RenderedCards } from './card-renderer.js';
-import { PlaceholderProfileSource, type Profile, type ProfileSource } from './profile-source.js';
+import { type Profile, type ProfileSource } from './profile-source.js';
+import { MisskeyError } from './misskey-client.js';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const templatesDirectory = resolve(sourceDirectory, '../templates');
 const publicDirectory = resolve(sourceDirectory, '../public/assets');
 
 export interface BuildAppOptions {
-  profileSource?: ProfileSource;
+  profileSource: ProfileSource;
   render?: (profile: Profile, generatedAt: Date) => Promise<RenderedCards>;
   now?: () => number;
 }
@@ -25,7 +26,7 @@ interface CardFormBody {
 
 interface ErrorResponse {
   error: {
-    code: 'invalid_username' | 'image_generation_failed';
+    code: 'invalid_username' | 'image_generation_failed' | 'user_not_found' | 'upstream_rate_limited' | 'profile_source_failed' | 'profile_source_timeout';
     message: string;
   };
 }
@@ -38,7 +39,7 @@ function normalizeUsername(value: unknown): string {
   return trimmed.startsWith('@') ? trimmed : `@${trimmed}`;
 }
 
-function sendError(reply: FastifyReply, statusCode: 400 | 500, error: ErrorResponse['error']) {
+function sendError(reply: FastifyReply, statusCode: number, error: ErrorResponse['error']) {
   return reply
     .code(statusCode)
     .type('application/json')
@@ -55,10 +56,10 @@ function serializeCard(image: Buffer, fileName: string) {
   };
 }
 
-export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
+export function buildApp(options: BuildAppOptions): FastifyInstance {
   const app = Fastify({ logger: true });
   const now = options.now ?? Date.now;
-  const profileSource = options.profileSource ?? new PlaceholderProfileSource();
+  const profileSource: ProfileSource = options.profileSource;
   const render = options.render ?? renderCards;
 
   app.register(fastifyView, {
@@ -101,6 +102,12 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         });
     } catch (error) {
       request.log.error(error, 'failed to generate card images');
+      if (error instanceof MisskeyError) {
+        if (error.kind === 'not_found') return sendError(reply, 404, { code: 'user_not_found', message: 'ユーザーが見つかりませんでした。' });
+        if (error.kind === 'rate_limited') return sendError(reply, 429, { code: 'upstream_rate_limited', message: 'アクセスが集中しています。時間をおいて再度お試しください。' });
+        if (error.kind === 'timeout') return sendError(reply, 504, { code: 'profile_source_timeout', message: 'プロフィールの取得がタイムアウトしました。時間をおいて再度お試しください。' });
+        if (error.kind === 'upstream' || error.kind === 'invalid_response') return sendError(reply, 502, { code: 'profile_source_failed', message: 'プロフィールを取得できませんでした。時間をおいて再度お試しください。' });
+      }
       return sendError(reply, 500, {
         code: 'image_generation_failed',
         message: 'カード画像を生成できませんでした。時間をおいて再度お試しください。',
