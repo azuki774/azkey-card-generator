@@ -45,9 +45,10 @@
             <form class="form-area" method="post" action="/cards">
               <label for="username">azkeyユーザー名</label>
               <div class="input-wrap">
-                <input id="username" name="username" type="text" placeholder="@username" autocomplete="off" aria-describedby="username-hint form-error" required>
+                <span class="input-prefix" aria-hidden="true">@</span>
+                <input id="username" name="username" type="text" placeholder="例: azuki" autocomplete="off" aria-describedby="username-hint form-error" required>
               </div>
-              <p id="username-hint" class="input-hint"><span aria-hidden="true">ⓘ</span> ユーザー名の先頭に @ をつけて入力してください</p>
+              <p id="username-hint" class="input-hint"><span aria-hidden="true">ⓘ</span> 英数字・アンダースコア</p>
               <p id="form-error" class="form-error" role="alert" hidden></p>
               <button class="primary-button" type="submit">
                 <span>カードを作る</span>

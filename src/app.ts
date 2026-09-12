@@ -30,10 +30,12 @@ interface ErrorResponse {
   };
 }
 
-const usernamePattern = /^@[A-Za-z0-9_]{1,20}$/;
+const usernamePattern = /^@[A-Za-z0-9_]{1,100}$/;
 
 function normalizeUsername(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
+  if (typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  return trimmed.startsWith('@') ? trimmed : `@${trimmed}`;
 }
 
 function sendError(reply: FastifyReply, statusCode: 400 | 500, error: ErrorResponse['error']) {
@@ -77,7 +79,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     if (!usernamePattern.test(username)) {
       return sendError(reply, 400, {
         code: 'invalid_username',
-        message: 'ユーザー名は @ から始まる1〜20文字の英数字・アンダースコアで入力してください。',
+        message: 'ユーザー名を確認してください。使用できる文字は英数字・アンダースコアです。',
       });
     }
 
