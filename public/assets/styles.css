@@ -28,6 +28,7 @@ h1 span { color:transparent; background:linear-gradient(90deg,var(--purple),#bb6
 .hero-sparkle--two { top:197px; right:4%; color:var(--cyan); font-size:20px; }
 .generator-panel { z-index:1; display:grid; grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr); overflow:hidden; border:1px solid rgba(224,219,237,.76); border-radius:26px; background:rgba(255,255,255,.9); box-shadow:var(--panel-shadow); }
 .input-column,.preview-column { padding:39px 44px 35px; }
+.preview-column { container-type:inline-size; }
 .input-column { border-right:1px solid var(--line); }
 .section-heading { display:flex; align-items:center; gap:15px; }
 .step-number { display:grid; width:41px; height:41px; flex:0 0 41px; place-items:center; color:white; border-radius:14px; background:var(--purple); font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Noto Sans Mono',monospace; font-size:13px; box-shadow:0 7px 15px rgba(118,84,245,.23); }
@@ -50,9 +51,11 @@ h1 span { color:transparent; background:linear-gradient(90deg,var(--purple),#bb6
 .button-arrow { display:grid; width:25px; height:25px; place-items:center; border:1px solid rgba(255,255,255,.35); border-radius:50%; font-size:18px; font-weight:400; }
 .privacy-note { display:flex; gap:6px; margin:26px 0 0; color:#716b7d; font-size:12px; line-height:1.6; }
 .lock-icon { color:#9a92b8; font-size:15px; }
-.preview-heading { display:flex; align-items:center; justify-content:space-between; }
-.preview-status { padding:6px 10px; color:#a59ead; border-radius:6px; background:#f4f2f6; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Noto Sans Mono',monospace; font-size:9px; }
-.card-previews { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:30px; }
+.preview-heading { display:flex; flex-wrap:wrap; gap:10px 12px; align-items:center; justify-content:space-between; }
+.preview-heading .section-heading { min-width:0; flex:1 1 auto; }
+.preview-heading h2 { white-space:nowrap; }
+.preview-status { flex:0 0 auto; padding:6px 10px; color:#a59ead; border-radius:6px; background:#f4f2f6; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Noto Sans Mono',monospace; font-size:9px; white-space:nowrap; }
+.card-previews { display:grid; grid-template-columns:1fr; gap:16px; margin-top:30px; }
 .card-preview { min-width:0; }
 .card-preview h3 { margin:0 0 10px; color:#6e687d; font-size:11px; font-weight:800; letter-spacing:.02em; }
 .card-preview h3 span { color:#aaa4b6; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Noto Sans Mono',monospace; font-size:8px; font-weight:500; letter-spacing:.08em; }
@@ -99,6 +102,7 @@ h1 span { color:transparent; background:linear-gradient(90deg,var(--purple),#bb6
   h1 { font-size:clamp(33px,10vw,48px); }
   .hero-sparkle--one { top:78px; right:4%; }
   .hero-sparkle--two { top:162px; right:0; }
+  .hero-sparkle { display:none; }
   .generator-panel { display:block; border-radius:21px; }
   .input-column,.preview-column { padding:29px 24px 28px; }
   .input-column { border-right:0; border-bottom:1px solid var(--line); }
@@ -107,6 +111,9 @@ h1 span { color:transparent; background:linear-gradient(90deg,var(--purple),#bb6
   .info-section { grid-template-columns:1fr 1fr; }
   .info-card--notice { grid-column:1 / -1; }
   .site-footer { display:block; padding-top:38px; line-height:2; }
+}
+@container (min-width:480px) {
+  .card-previews { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @media (max-width:420px) {
   .service-badge { padding:7px 9px; font-size:9px; }
