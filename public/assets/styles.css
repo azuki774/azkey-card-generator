@@ -37,6 +37,7 @@ h1 span { color:transparent; background:linear-gradient(90deg,var(--purple),#bb6
 .form-area label { display:block; margin-bottom:11px; font-size:12px; font-weight:700; }
 .input-wrap { display:flex; align-items:center; height:55px; border:1px solid #ddd9e9; border-radius:12px; background:white; transition:border-color .2s,box-shadow .2s; }
 .input-wrap:focus-within { border-color:var(--purple); box-shadow:0 0 0 4px rgba(118,84,245,.13); }
+.input-prefix { flex:0 0 auto; padding-left:16px; color:#8f89a0; font-size:14px; }
 .input-wrap input { width:100%; height:100%; padding:0 16px; color:var(--ink); border:0; outline:0; background:transparent; font:inherit; font-size:14px; }
 .input-wrap input::placeholder { color:#c5c1cc; }
 .input-hint { display:flex; gap:6px; align-items:center; margin:11px 0 32px; color:#a19baa; font-size:10px; line-height:1.5; }

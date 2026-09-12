@@ -57,6 +57,9 @@ test('GET / returns the front/back generator page', async () => {
     assert.match(response.headers['content-type'] ?? '', /^text\/html/);
     assert.match(response.body, /<script src="\/assets\/app\.js" defer><\/script>/);
     assert.match(response.body, /<h2>カードプレビュー<\/h2>/);
+    assert.match(response.body, /class="input-prefix"[^>]*>@<\/span>/);
+    assert.match(response.body, /name="username"[^>]*placeholder="username"/);
+    assert.match(response.body, /ユーザー名だけ入力してください（@ は自動で付きます）/);
     assert.match(response.body, /data-card-image="front"/);
     assert.match(response.body, /data-card-image="back"/);
     assert.equal((response.body.match(/data-download-link=/g) ?? []).length, 2);
@@ -133,6 +136,49 @@ test('POST /cards returns both PNG cards using the documented JSON contract', as
         back: { data: Buffer.from('back-png').toString('base64'), mediaType: 'image/png', fileName: 'azkey-card-back.png' },
       },
     });
+  } finally {
+    await app.close();
+  }
+});
+
+test('POST /cards normalizes an unprefixed username before loading the profile', async () => {
+  let loadedUsername = '';
+  const app = buildApp({
+    profileSource: {
+      getProfile: async (username) => {
+        loadedUsername = username;
+        return { username, displayName: 'Alice', notesCount: 0 };
+      },
+    },
+    render: async () => ({ front: Buffer.from('front-png'), back: Buffer.from('back-png') }),
+  });
+  try {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/cards',
+      payload: 'username=%20alice%20',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    });
+    assert.equal(response.statusCode, 200);
+    assert.equal(loadedUsername, '@alice');
+  } finally {
+    await app.close();
+  }
+});
+
+test('POST /cards rejects malformed usernames after optional @ normalization', async () => {
+  const app = buildApp();
+  try {
+    for (const username of ['@@alice', 'alice@example', 'a'.repeat(21), '']) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/cards',
+        payload: `username=${encodeURIComponent(username)}`,
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      });
+      assert.equal(response.statusCode, 400, username);
+      assert.equal(response.json().error.code, 'invalid_username', username);
+    }
   } finally {
     await app.close();
   }

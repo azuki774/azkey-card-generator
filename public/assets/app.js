@@ -5,8 +5,29 @@
   if (!(form instanceof HTMLFormElement) || !(status instanceof HTMLElement)) return;
 
   const submitButton = form.querySelector('button[type="submit"]');
+  const usernameInput = form.querySelector('#username');
   const sides = ['front', 'back'];
   let objectUrls = [];
+
+  const normalizeUsernameInput = (value) => {
+    const trimmed = value.trim();
+    return trimmed.startsWith('@') && !trimmed.startsWith('@@') ? trimmed.slice(1) : trimmed;
+  };
+
+  if (usernameInput instanceof HTMLInputElement) {
+    const normalizeInput = () => {
+      usernameInput.value = normalizeUsernameInput(usernameInput.value);
+    };
+    usernameInput.addEventListener('blur', normalizeInput);
+    usernameInput.addEventListener('paste', (event) => {
+      event.preventDefault();
+      const pastedText = event.clipboardData?.getData('text') ?? '';
+      const start = usernameInput.selectionStart ?? usernameInput.value.length;
+      const end = usernameInput.selectionEnd ?? start;
+      usernameInput.setRangeText(pastedText, start, end, 'end');
+      normalizeInput();
+    });
+  }
 
   const revokeObjectUrls = () => {
     for (const url of objectUrls) URL.revokeObjectURL(url);
@@ -70,6 +91,7 @@
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (usernameInput instanceof HTMLInputElement) usernameInput.value = normalizeUsernameInput(usernameInput.value);
     if (!form.reportValidity()) return;
 
     resetCards();
