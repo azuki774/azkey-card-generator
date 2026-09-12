@@ -7,6 +7,12 @@ import { inflateSync } from 'node:zlib';
 
 import { buildApp } from '../src/app.js';
 import { renderCards } from '../src/card-renderer.js';
+import { buildMockMisskey } from '../src/mock-misskey.js';
+import { MisskeyClient } from '../src/misskey-client.js';
+import { MisskeyProfileSource } from '../src/profile-source.js';
+import { MisskeyError } from '../src/misskey-client.js';
+
+const stubProfileSource = { getProfile: async (username: string) => ({ username, displayName: 'Alice', notesCount: 0 }) };
 
 function crc32(data: Uint8Array): number {
   let crc = 0xffffffff;
@@ -50,7 +56,7 @@ function decodeRgbPng(png: Buffer): { width: number; height: number; pixels: Buf
 }
 
 test('GET / returns the front/back generator page', async () => {
-  const app = buildApp();
+  const app = buildApp({ profileSource: stubProfileSource });
   try {
     const response = await app.inject({ method: 'GET', url: '/' });
     assert.equal(response.statusCode, 200);
@@ -93,7 +99,7 @@ test('card template assets contain valid front and back placeholders', async () 
 });
 
 test('static assets are served', async () => {
-  const app = buildApp();
+  const app = buildApp({ profileSource: stubProfileSource });
   try {
     const [styles, script] = await Promise.all([
       app.inject({ method: 'GET', url: '/assets/styles.css' }),
@@ -117,6 +123,7 @@ test('POST /cards returns both PNG cards using the documented JSON contract', as
   const generatedAt = Date.parse('2026-01-01T00:00:00.000Z');
   const app = buildApp({
     now: () => generatedAt,
+    profileSource: { getProfile: async (username) => ({ username, displayName: 'Alice', notesCount: 0 }) },
     render: async () => ({ front: Buffer.from('front-png'), back: Buffer.from('back-png') }),
   });
   try {
@@ -172,7 +179,7 @@ test('POST /cards normalizes an unprefixed username before loading the profile',
 });
 
 test('POST /cards rejects malformed usernames after optional @ normalization', async () => {
-  const app = buildApp();
+  const app = buildApp({ profileSource: stubProfileSource });
   try {
     for (const username of ['@@alice', 'alice@example', 'a'.repeat(101), '@' + 'a'.repeat(101), '']) {
       const response = await app.inject({
@@ -190,7 +197,7 @@ test('POST /cards rejects malformed usernames after optional @ normalization', a
 });
 
 test('POST /cards rejects invalid usernames with JSON', async () => {
-  const app = buildApp();
+  const app = buildApp({ profileSource: stubProfileSource });
   try {
     const response = await app.inject({
       method: 'POST',
@@ -207,7 +214,7 @@ test('POST /cards rejects invalid usernames with JSON', async () => {
 });
 
 test('renderer failures return a safe JSON error', async () => {
-  const app = buildApp({ render: async () => { throw new Error('internal renderer detail'); } });
+  const app = buildApp({ profileSource: stubProfileSource, render: async () => { throw new Error('internal renderer detail'); } });
   try {
     const response = await app.inject({
       method: 'POST',
@@ -243,4 +250,37 @@ test('renderCards creates distinct 1200x760 front and back PNGs', async () => {
     ['png', 1200, 760],
   );
   assert.notDeepEqual(cards.front, cards.back);
+});
+
+test('real mock HTTP supplies user/avatar and /cards generates both PNGs', async () => {
+  const mock = buildMockMisskey();
+  await mock.listen({ host: '127.0.0.1', port: 0 });
+  try {
+    const address = mock.server.address(); assert.ok(address && typeof address !== 'string');
+    const client = new MisskeyClient({ baseUrl: `http://127.0.0.1:${address.port}` });
+    const user = await client.getUserInfo('@alice');
+    assert.equal(user.unknownField && (user.unknownField as { preserved: boolean }).preserved, true);
+    const avatar = await client.getAvatar(user); assert.ok(avatar);
+    assert.equal((await (await import('sharp')).default(avatar.data).metadata()).format, 'png');
+    const app = buildApp({ profileSource: new MisskeyProfileSource(client) });
+    const response = await app.inject({ method: 'POST', url: '/cards', payload: 'username=alice', headers: { 'content-type': 'application/x-www-form-urlencoded' } });
+    assert.equal(response.statusCode, 200);
+    const result = response.json();
+    assert.equal((await (await import('sharp')).default(Buffer.from(result.cards.front.data, 'base64')).metadata()).width, 1200);
+    assert.equal((await (await import('sharp')).default(Buffer.from(result.cards.back.data, 'base64')).metadata()).height, 760);
+    await app.close();
+  } finally { await mock.close(); }
+});
+
+test('/cards maps profile source failures to safe status codes', async () => {
+  for (const [kind, status, code] of [
+    ['not_found', 404, 'user_not_found'], ['rate_limited', 429, 'upstream_rate_limited'],
+    ['upstream', 502, 'profile_source_failed'], ['timeout', 504, 'profile_source_timeout'],
+  ] as const) {
+    const app = buildApp({ profileSource: { getProfile: async () => { throw new MisskeyError(kind, 'internal'); } } });
+    try {
+      const response = await app.inject({ method: 'POST', url: '/cards', payload: 'username=alice', headers: { 'content-type': 'application/x-www-form-urlencoded' } });
+      assert.equal(response.statusCode, status); assert.equal(response.json().error.code, code);
+    } finally { await app.close(); }
+  }
 });
