@@ -29,5 +29,3 @@ application’s role for the profile and is independent of azkey roles. The curr
 the renderer can use the optional fields when a caller provides them. The source does
 not fetch an avatar as part of profile mapping, and invalid or missing avatar data uses
 the local generated placeholder.
-
-The rough visual reference is [front-place-idea.webp](front-place-idea.webp).
