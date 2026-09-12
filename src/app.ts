@@ -79,7 +79,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     if (!usernamePattern.test(username)) {
       return sendError(reply, 400, {
         code: 'invalid_username',
-        message: 'ユーザー名は1〜20文字の英数字・アンダースコアで入力してください（@ は任意です）。',
+        message: 'ユーザー名は英数字・アンダースコアの1〜20文字で入力してください。',
       });
     }
 

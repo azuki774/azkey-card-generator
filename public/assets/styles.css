@@ -114,4 +114,5 @@ h1 span { color:transparent; background:linear-gradient(90deg,var(--purple),#bb6
   .info-card + .info-card { margin-top:10px; }
 }
 
-.input-prefix { flex:0 0 auto; padding-left:16px; color:#8f89a0; font-size:14px; }
+.input-prefix { display:grid; align-self:stretch; flex:0 0 48px; place-items:center; color:#7051da; border-right:1px solid #ddd9e9; border-radius:11px 0 0 11px; background:#f0ecff; font-size:18px; font-weight:600; }
+.input-prefix + input { min-width:0; flex:1 1 auto; width:0; }

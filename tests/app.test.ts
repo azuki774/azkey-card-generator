@@ -58,8 +58,8 @@ test('GET / returns the front/back generator page', async () => {
     assert.match(response.body, /<script src="\/assets\/app\.js" defer><\/script>/);
     assert.match(response.body, /<h2>カードプレビュー<\/h2>/);
     assert.match(response.body, /class="input-prefix"[^>]*>@<\/span>/);
-    assert.match(response.body, /name="username"[^>]*placeholder="username"/);
-    assert.match(response.body, /ユーザー名だけ入力してください（@ は自動で付きます）/);
+    assert.match(response.body, /name="username"[^>]*placeholder="例: azuki"/);
+    assert.match(response.body, /英数字・アンダースコア、1〜20文字/);
     assert.match(response.body, /data-card-image="front"/);
     assert.match(response.body, /data-card-image="back"/);
     assert.equal((response.body.match(/data-download-link=/g) ?? []).length, 2);
