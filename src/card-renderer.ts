@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import sharp from 'sharp';
 
 import type { Profile } from './profile-source.js';
+import { fitText } from './text-fitting.js';
 
 export const CARD_WIDTH = 1200;
 export const CARD_HEIGHT = 760;
@@ -33,11 +34,7 @@ function formatDate(date: Date): string {
   return date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
 }
 
-function graphemes(value: string): string[] {
-  return [...new Intl.Segmenter('ja', { granularity: 'grapheme' }).segment(value)].map(({ segment }) => segment);
-}
-
-export async function rasterText(value: string, size: number, weight: number, fill: string): Promise<{ data: string; width: number; height: number }> {
+async function rasterText(value: string, size: number, weight: number, fill: string): Promise<{ data: string; width: number; height: number }> {
   const normalized = value.replace(/[\t\r\n]+/g, ' ').trim();
   if (!normalized) return { data: '', width: 0, height: 0 };
   const font = `${fontFamily} ${weight >= 700 ? 'Bold' : 'Regular'} ${size}`;
@@ -50,23 +47,8 @@ async function renderedWidth(value: string, size: number, weight: number): Promi
   return (await rasterText(value, size, weight, '#000')).width;
 }
 
-export async function fitText(value: string, maxWidth: number, maxSize: number, minSize: number, weight: number): Promise<{ text: string; size: number }> {
-  const normalized = value.replace(/[\t\r\n]+/g, ' ').trim();
-  if (!normalized) return { text: '', size: maxSize };
-  const units = graphemes(normalized);
-  for (let size = maxSize; size >= minSize; size -= 1) {
-    if (await renderedWidth(normalized, size, weight) <= maxWidth) return { text: normalized, size };
-  }
-  let text = '';
-  for (const unit of units) {
-    if (await renderedWidth(`${text}${unit}…`, minSize, weight) > maxWidth) break;
-    text += unit;
-  }
-  return { text: text ? `${text}…` : '…', size: minSize };
-}
-
 async function textElement(value: string, x: number, top: number, width: number, maxSize: number, minSize: number, weight: number, anchor = 'start', fill = '#242032'): Promise<string> {
-  const fitted = await fitText(value, width, maxSize, minSize, weight);
+  const fitted = await fitText(value, { maxWidth: width, maxSize, minSize }, (text, size) => renderedWidth(text, size, weight));
   if (!fitted.text) return '';
   const raster = await rasterText(fitted.text, fitted.size, weight, fill);
   const imageX = anchor === 'end' ? x - raster.width : x;

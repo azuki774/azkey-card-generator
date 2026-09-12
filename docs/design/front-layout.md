@@ -29,3 +29,15 @@ application’s role for the profile and is independent of azkey roles. The curr
 the renderer can use the optional fields when a caller provides them. The source does
 not fetch an avatar as part of profile mapping, and invalid or missing avatar data uses
 the local generated placeholder.
+
+## Testing rationale
+
+The fitting policy is tested with an injected deterministic width function, so its
+size selection, minimum-size ellipsis, whitespace normalization, and grapheme
+boundaries are checked independently of fonts and Sharp. Renderer tests decode
+pixels with explicit RGBA channels and compare only the regions each input is
+allowed to affect. They cover role placement, visible name and handle text,
+literal text escaping, fallback versus supplied avatars, centered cover cropping,
+and rounded clipping. These tests protect the observable guarantees of the
+layout; manual visual review is still useful for typography, anti-aliasing, and
+overall composition.
