@@ -69,7 +69,7 @@ h1 span { color:transparent; background:linear-gradient(90deg,var(--purple),#bb6
 .placeholder-lines span:nth-child(1) { width:76px; }
 .placeholder-lines span:nth-child(2) { width:48px; background:#e6e2ed; }
 .placeholder-lines span:nth-child(3) { width:62px; background:#e6e2ed; }
-.placeholder-content p { margin:0; color:#a8a2b2; font-size:10px; line-height:1.7; text-align:center; }
+.placeholder-content p { margin:0; color:#716b7d; font-size:12px; line-height:1.5; text-align:center; }
 .placeholder-orbit { position:absolute; border:1px solid rgba(118,84,245,.12); border-radius:50%; transform:rotate(-24deg); }
 .placeholder-orbit--one { width:270px; height:125px; }
 .placeholder-orbit--two { width:340px; height:170px; border-color:rgba(239,116,185,.1); transform:rotate(28deg); }
