@@ -32,12 +32,13 @@ the local generated placeholder.
 
 ## Testing rationale
 
-The fitting policy is tested with an injected deterministic width function, so its
-size selection, minimum-size ellipsis, whitespace normalization, and grapheme
-boundaries are checked independently of fonts and Sharp. Renderer tests decode
-pixels with explicit RGBA channels and compare only the regions each input is
-allowed to affect. They cover role placement, visible name and handle text,
-literal text escaping, fallback versus supplied avatars, centered cover cropping,
-and rounded clipping. These tests protect the observable guarantees of the
-layout; manual visual review is still useful for typography, anti-aliasing, and
-overall composition.
+The fitting policy tests cover size selection, minimum-size ellipsis, whitespace
+normalization, and grapheme boundaries with a deterministic width function.
+Renderer tests cover the higher-risk avatar behavior: missing and corrupt inputs
+share the fallback, and a non-square input is center-cropped without stretching.
+The existing HTTP and render smoke tests cover PNG generation, literal Unicode
+and markup-looking display names, and optional role and user ID fields.
+
+Visual layout, whitespace, typography, and rounded clipping remain manual review
+items because those aesthetic details change frequently. The suite intentionally
+does not use full pixel snapshots or a mutation test matrix.

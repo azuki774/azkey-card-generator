@@ -235,6 +235,8 @@ test('renderCards creates distinct 1200x760 front and back PNGs', async () => {
     username: '@unsafe_name',
     displayName: '名前 <unsafe>',
     notesCount: 1234,
+    appRole: 'ＦＵＬＬＷＩＤＴＨ役割ＦＵＬＬＷＩＤＴＨ役割',
+    userId: 'user-id-with-optional-fields',
   }, new Date('2026-01-01T00:00:00.000Z'));
   const sharp = (await import('sharp')).default;
   const [frontMetadata, backMetadata] = await Promise.all([
