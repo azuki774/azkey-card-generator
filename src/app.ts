@@ -30,7 +30,7 @@ interface ErrorResponse {
   };
 }
 
-const usernamePattern = /^@[A-Za-z0-9_]{1,20}$/;
+const usernamePattern = /^@[A-Za-z0-9_]{1,100}$/;
 
 function normalizeUsername(value: unknown): string {
   if (typeof value !== 'string') return '';
@@ -79,7 +79,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     if (!usernamePattern.test(username)) {
       return sendError(reply, 400, {
         code: 'invalid_username',
-        message: 'ユーザー名は英数字・アンダースコアの1〜20文字で入力してください。',
+        message: 'ユーザー名を確認してください。使用できる文字は英数字・アンダースコアです。',
       });
     }
 

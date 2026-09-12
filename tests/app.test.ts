@@ -59,7 +59,8 @@ test('GET / returns the front/back generator page', async () => {
     assert.match(response.body, /<h2>カードプレビュー<\/h2>/);
     assert.match(response.body, /class="input-prefix"[^>]*>@<\/span>/);
     assert.match(response.body, /name="username"[^>]*placeholder="例: azuki"/);
-    assert.match(response.body, /英数字・アンダースコア、1〜20文字/);
+    assert.match(response.body, /英数字・アンダースコア/);
+    assert.doesNotMatch(response.body, /1〜(?:20|100)文字/);
     assert.match(response.body, /data-card-image="front"/);
     assert.match(response.body, /data-card-image="back"/);
     assert.equal((response.body.match(/data-download-link=/g) ?? []).length, 2);
@@ -153,14 +154,18 @@ test('POST /cards normalizes an unprefixed username before loading the profile',
     render: async () => ({ front: Buffer.from('front-png'), back: Buffer.from('back-png') }),
   });
   try {
-    const response = await app.inject({
-      method: 'POST',
-      url: '/cards',
-      payload: 'username=%20alice%20',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    });
-    assert.equal(response.statusCode, 200);
-    assert.equal(loadedUsername, '@alice');
+    for (const name of ['alice', 'a'.repeat(21), 'a'.repeat(100)]) {
+      for (const prefix of ['', '@']) {
+        const response = await app.inject({
+          method: 'POST',
+          url: '/cards',
+          payload: new URLSearchParams({ username: ` ${prefix}${name} ` }).toString(),
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        });
+        assert.equal(response.statusCode, 200);
+        assert.equal(loadedUsername, `@${name}`);
+      }
+    }
   } finally {
     await app.close();
   }
@@ -169,7 +174,7 @@ test('POST /cards normalizes an unprefixed username before loading the profile',
 test('POST /cards rejects malformed usernames after optional @ normalization', async () => {
   const app = buildApp();
   try {
-    for (const username of ['@@alice', 'alice@example', 'a'.repeat(21), '']) {
+    for (const username of ['@@alice', 'alice@example', 'a'.repeat(101), '@' + 'a'.repeat(101), '']) {
       const response = await app.inject({
         method: 'POST',
         url: '/cards',
