@@ -13,8 +13,6 @@ a { color:inherit; }
 .brand { display:inline-flex; align-items:center; gap:11px; color:var(--ink); text-decoration:none; }
 .brand-mark { display:grid; width:35px; height:35px; place-items:center; color:white; border-radius:11px; background:linear-gradient(135deg,#6846ed,#b179f4 55%,#ed77bb); font-size:20px; font-weight:800; transform:rotate(-5deg); box-shadow:0 7px 17px rgba(111,72,231,.26); }
 .brand-name { font-size:11px; font-weight:800; letter-spacing:.12em; line-height:1.2; }
-.service-badge { display:inline-flex; align-items:center; gap:7px; padding:8px 13px; color:#735dd1; border:1px solid #e2dafa; border-radius:99px; background:rgba(250,247,255,.8); font-size:10px; font-weight:700; letter-spacing:.08em; }
-.badge-dot { width:6px; height:6px; border-radius:50%; background:#53d0c7; box-shadow:0 0 0 3px rgba(83,208,199,.17); }
 .hero { z-index:1; padding:62px 0 50px; }
 .eyebrow,.section-kicker { margin:0 0 14px; color:var(--purple); font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Noto Sans Mono',monospace; font-size:10px; font-weight:500; letter-spacing:.19em; }
 .eyebrow span { margin-right:5px; color:var(--pink); font-size:15px; }
@@ -116,7 +114,6 @@ h1 span { color:transparent; background:linear-gradient(90deg,var(--purple),#bb6
   .card-previews { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @media (max-width:420px) {
-  .service-badge { padding:7px 9px; font-size:9px; }
   .brand-name { font-size:10px; }
   .hero-description { font-size:12px; }
   .info-section { display:block; }
