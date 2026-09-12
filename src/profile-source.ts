@@ -1,7 +1,3 @@
-import { readFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 export interface Profile {
   username: string;
   displayName: string;
@@ -11,25 +7,26 @@ export interface Profile {
   avatar?: Buffer;
 }
 
-/**
- * Temporary profile source used until the azkey API integration is added.
- * Keeping this behind an interface makes the renderer independent from the
- * eventual API client.
- */
 export interface ProfileSource {
   getProfile(username: string): Promise<Profile>;
 }
 
-export class PlaceholderProfileSource implements ProfileSource {
+import { MisskeyClient, type MisskeyUserInfo } from './misskey-client.js';
+
+export class MisskeyProfileSource implements ProfileSource {
+  constructor(private readonly client: MisskeyClient) {}
+
   async getProfile(username: string): Promise<Profile> {
-    const sourceDirectory = dirname(fileURLToPath(import.meta.url));
-    const avatar = await readFile(resolve(sourceDirectory, '../assets/card-templates/default/front/icons/placeholder.svg'));
-    return {
-      username,
-      displayName: 'Sample User',
-      notesCount: 0,
-      userId: 'placeholder-profile',
-      avatar,
-    };
+    const user = await this.client.getUserInfo(username);
+    return profileFromMisskeyUser(user);
   }
+}
+
+export function profileFromMisskeyUser(user: Pick<MisskeyUserInfo, 'username' | 'name' | 'notesCount'>): Profile {
+  const displayName = user.name?.trim() || user.username;
+  return {
+    username: `@${user.username.replace(/^@/, '')}`,
+    displayName,
+    notesCount: user.notesCount,
+  };
 }

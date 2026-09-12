@@ -23,8 +23,11 @@ glyphs. Avatar input
 is optional and invalid data falls back to a local generated placeholder; no
 network fetch is performed.
 
-`appRole` describes this application’s role for the profile and is independent
-of azkey roles. `PlaceholderProfileSource` supplies a fixed sample ID and the
-local placeholder icon as its avatar, with no app role.
+`appRole`, `userId`, and `avatar` are optional render inputs. `appRole` describes this
+application’s role for the profile and is independent of azkey roles. The current
+`MisskeyProfileSource` supplies the username, display name, and note count from Misskey;
+the renderer can use the optional fields when a caller provides them. The source does
+not fetch an avatar as part of profile mapping, and invalid or missing avatar data uses
+the local generated placeholder.
 
 The rough visual reference is [front-place-idea.webp](front-place-idea.webp).

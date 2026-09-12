@@ -10,7 +10,8 @@
     "build": "tsc",
     "test": "tsx --test tests/*.test.ts",
     "start": "node dist/server.js",
-    "dev": "tsx watch src/server.ts"
+    "dev": "tsx watch src/server.ts",
+    "mock:misskey": "tsx src/mock-misskey.ts"
   },
   "dependencies": {
     "@fastify/formbody": "^9.0.0",
