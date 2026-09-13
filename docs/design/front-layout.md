@@ -14,10 +14,12 @@ rasterized by Sharp.
 | App role | x432, y224, w664, h48 | 32px; omitted when empty |
 | Display name | x432, y336, w664, h72 | up to 48px bold |
 | Handle | x432, y432, w664, h56 | up to 40px |
-| User ID | right edge x1136, y688, w704, h32 | up to 24px, right aligned |
+| Footer handle | right edge x1136, y656, w704 | up to 22px, right aligned |
+| User ID | right edge x1136, y696, w704 | up to 18px, right aligned |
 
 Names and handles shrink to 24px and then use a grapheme-safe ellipsis. User
-IDs shrink to 16px; roles remain 32px and ellipsize. The renderer measures and
+IDs shrink to 14px and footer handles to 16px; roles remain 32px and ellipsize.
+The footer repeats the handle above the internal user ID, matching the back. The renderer measures and
 embeds the same Sharp/Pango text raster, so fitting and output use identical
 glyphs. Avatar input
 is optional and invalid data falls back to a local generated placeholder; no
@@ -26,10 +28,9 @@ network fetch is performed.
 `appRole`, `userId`, and `avatar` are optional render inputs. `appRole` describes this
 application’s role for the profile and is independent of azkey roles. The current
 `MisskeyProfileSource` supplies the username, display name, note count, user ID, and
-registration date from Misskey;
-the renderer can use the optional fields when a caller provides them. The source does
-not fetch an avatar as part of profile mapping, and invalid or missing avatar data uses
-the local generated placeholder.
+registration date from Misskey, and downloads the avatar for the renderer.
+Missing or failed avatar downloads and invalid image data use the local generated
+placeholder.
 
 ## Testing rationale
 
