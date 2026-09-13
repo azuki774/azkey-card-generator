@@ -65,7 +65,9 @@ test('GET / returns the front/back generator page', async () => {
     assert.match(response.body, /<h2>カードプレビュー<\/h2>/);
     assert.match(response.body, /class="input-prefix"[^>]*>@<\/span>/);
     assert.match(response.body, /name="username"[^>]*placeholder="例: azuki"/);
-    assert.match(response.body, /英数字・アンダースコア/);
+    assert.match(response.body, /<h1 id="page-title">azkey <span>プロフカード作成<\/span><\/h1>/);
+    assert.match(response.body, /aria-describedby="form-error"/);
+    assert.doesNotMatch(response.body, /username-hint|input-hint|英数字・アンダースコア/);
     assert.doesNotMatch(response.body, /1〜(?:20|100)文字/);
     assert.match(response.body, /data-card-image="front"/);
     assert.match(response.body, /data-card-image="back"/);
