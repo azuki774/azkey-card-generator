@@ -18,20 +18,28 @@ export interface RenderedCards {
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const cardAssetsDirectory = resolve(sourceDirectory, '../assets/card-templates/default');
 const fontFamily = 'Noto Sans CJK JP';
-const backFontFamily = 'Noto Sans CJK JP, DejaVu Sans, sans-serif';
 const FRONT = {
   title: { x: 64, y: 40, width: 800, size: 48, weight: 700, height: 64 }, logo: { x: 960, y: 40, size: 176 },
   avatar: { x: 64, y: 224, size: 320, radius: 24 }, panel: { x: 408, y: 200, width: 728, height: 368, radius: 24 },
   role: { x: 432, y: 224, width: 664, size: 32, minSize: 32, weight: 700, height: 48 }, name: { x: 432, y: 336, width: 664, size: 48, minSize: 24, weight: 800, height: 72 }, handle: { x: 432, y: 432, width: 664, size: 40, minSize: 24, weight: 700, height: 56 },
   userId: { x: 1136, y: 688, width: 704, size: 24, minSize: 16, weight: 500, height: 32 },
 } as const;
+const BACK = {
+  title: { x: 64, y: 40, width: 800, size: 48, weight: 700 }, logo: { x: 960, y: 40, size: 176 },
+  notesLabel: { x: 108, y: 290, width: 360, size: 26, minSize: 24, weight: 700 }, notes: { x: 108, y: 338, width: 420, size: 34, minSize: 24, weight: 800 },
+  registrationLabel: { x: 108, y: 454, width: 360, size: 26, minSize: 24, weight: 700 }, registration: { x: 108, y: 502, width: 420, size: 34, minSize: 24, weight: 800 },
+  handle: { x: 1136, y: 656, width: 704, size: 22, minSize: 16, weight: 500 },
+  userId: { x: 1136, y: 696, width: 704, size: 18, minSize: 14, weight: 500 },
+} as const;
 
 function escapeXml(value: string): string {
   return value.replace(/[<>&'\"]/g, (character) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[character] ?? character));
 }
 
-function formatDate(date: Date): string {
-  return date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
+function formatRegistrationDate(value: string | undefined): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toISOString().slice(0, 10);
 }
 
 async function rasterText(value: string, size: number, weight: number, fill: string): Promise<{ data: string; width: number; height: number }> {
@@ -86,30 +94,32 @@ async function frontSvg(profile: Profile): Promise<Buffer> {
 </svg>`);
 }
 
-function backSvg(profile: Profile, generatedAt: Date): Buffer {
-  const username = escapeXml(profile.username.replace(/^@/, ''));
-  const displayName = escapeXml(profile.displayName);
-  const notesCount = escapeXml(profile.notesCount.toLocaleString('en-US'));
-  const generatedAtLabel = escapeXml(formatDate(generatedAt));
+async function backSvg(profile: Profile): Promise<Buffer> {
+  const [title, logo, notesLabel, notes, registrationLabel, registration, handle, userId] = await Promise.all([
+    textElement('Azuki Internet', BACK.title.x, BACK.title.y, BACK.title.width, BACK.title.size, BACK.title.size, BACK.title.weight),
+    readFile(resolve(cardAssetsDirectory, 'front/icons/placeholder.svg')),
+    textElement('ノート数', BACK.notesLabel.x, BACK.notesLabel.y, BACK.notesLabel.width, BACK.notesLabel.size, BACK.notesLabel.minSize, BACK.notesLabel.weight),
+    textElement(profile.notesCount.toLocaleString('en-US'), BACK.notes.x, BACK.notes.y, BACK.notes.width, BACK.notes.size, BACK.notes.minSize, BACK.notes.weight),
+    textElement('登録日', BACK.registrationLabel.x, BACK.registrationLabel.y, BACK.registrationLabel.width, BACK.registrationLabel.size, BACK.registrationLabel.minSize, BACK.registrationLabel.weight),
+    textElement(formatRegistrationDate(profile.registrationDate), BACK.registration.x, BACK.registration.y, BACK.registration.width, BACK.registration.size, BACK.registration.minSize, BACK.registration.weight),
+    textElement(`@${profile.username.replace(/^@/, '')}`, BACK.handle.x, BACK.handle.y, BACK.handle.width, BACK.handle.size, BACK.handle.minSize, BACK.handle.weight, 'end'),
+    profile.userId?.trim() ? textElement(profile.userId, BACK.userId.x, BACK.userId.y, BACK.userId.width, BACK.userId.size, BACK.userId.minSize, BACK.userId.weight, 'end') : Promise.resolve(''),
+  ]);
   return Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" viewBox="0 0 ${CARD_WIDTH} ${CARD_HEIGHT}">
-  <text x="64" y="78" fill="#2daeb5" font-family="${backFontFamily}" font-size="25" font-weight="700" letter-spacing="4">AZKEY PROFILE CARD · BACK</text>
-  <circle cx="600" cy="340" r="72" fill="#ffffff" opacity=".94"/><path d="M482 494c30-92 206-92 236 0" fill="#ffffff" opacity=".94"/>
-  <rect x="250" y="535" width="700" height="150" rx="28" fill="#ffffff" opacity=".92"/>
-  <text x="600" y="594" text-anchor="middle" fill="#242032" font-family="${backFontFamily}" font-size="42" font-weight="800">${displayName}</text>
-  <text x="600" y="642" text-anchor="middle" fill="#2daeb5" font-family="${backFontFamily}" font-size="27" font-weight="700">@${username}</text>
-  <text x="64" y="724" fill="#777184" font-family="${backFontFamily}" font-size="20">公開ノート ${notesCount}</text>
-  <text x="1136" y="724" text-anchor="end" fill="#777184" font-family="${backFontFamily}" font-size="20">${generatedAtLabel}</text>
+  ${title}
+  <image x="${BACK.logo.x}" y="${BACK.logo.y}" width="${BACK.logo.size}" height="${BACK.logo.size}" href="data:image/svg+xml;base64,${logo.toString('base64')}"/>
+  ${notesLabel}${notes}${registrationLabel}${registration}${handle}${userId}
 </svg>`);
 }
 
-async function renderSide(profile: Profile, generatedAt: Date, side: 'front' | 'back'): Promise<Buffer> {
-  const basePath = resolve(cardAssetsDirectory, side, 'base.png');
-  const overlay = side === 'front' ? await frontSvg(profile) : backSvg(profile, generatedAt);
+async function renderSide(profile: Profile, side: 'front' | 'back'): Promise<Buffer> {
+  const basePath = resolve(cardAssetsDirectory, side === 'back' ? 'front' : side, 'base.png');
+  const overlay = side === 'front' ? await frontSvg(profile) : await backSvg(profile);
   return sharp(basePath).composite([{ input: overlay }]).png().toBuffer();
 }
 
 export async function renderCards(profile: Profile, generatedAt: Date): Promise<RenderedCards> {
-  const [front, back] = await Promise.all([renderSide(profile, generatedAt, 'front'), renderSide(profile, generatedAt, 'back')]);
+  const [front, back] = await Promise.all([renderSide(profile, 'front'), renderSide(profile, 'back')]);
   return { front, back };
 }

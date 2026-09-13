@@ -35,3 +35,26 @@ test('supplied avatars use a centered cover crop without stretching', async () =
     assert.deepEqual([...pixel], [30, 50, 240]);
   }
 });
+
+test('back registration date uses UTC date and em dash fallback', async () => {
+  const profile = { ...baseProfile, registrationDate: '2024-05-06T00:30:00.000Z' };
+  const sameInstant = { ...baseProfile, registrationDate: '2024-05-05T20:30:00-04:00' };
+  const [dated, equivalent, missing, invalid, nextDay] = await Promise.all([
+    renderCards(profile, date), renderCards(sameInstant, date),
+    renderCards(baseProfile, date), renderCards({ ...baseProfile, registrationDate: 'not-a-date' }, date),
+    renderCards({ ...baseProfile, registrationDate: '2024-05-07T00:30:00.000Z' }, date),
+  ]);
+  const backs = await Promise.all([dated, equivalent, missing, invalid, nextDay].map((cards) => decoded(cards.back)));
+  assert.deepEqual(backs[0], backs[1]);
+  assert.deepEqual(backs[2], backs[3]);
+  assert.notDeepEqual(backs[0], backs[4]);
+  assert.notDeepEqual(backs[2], backs[4]);
+});
+
+test('back footer identifies the account independently of display name', async () => {
+  const withName = await decoded((await renderCards({ ...baseProfile, displayName: 'Alice', userId: 'user-id' }, date)).back);
+  const changedName = await decoded((await renderCards({ ...baseProfile, displayName: '別の表示名', userId: 'user-id' }, date)).back);
+  const changedUsername = await decoded((await renderCards({ ...baseProfile, username: '@bob', displayName: 'Alice', userId: 'user-id' }, date)).back);
+  assert.deepEqual(withName, changedName);
+  assert.notDeepEqual(withName, changedUsername);
+});
