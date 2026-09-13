@@ -44,8 +44,8 @@ const user = await client.getUserInfo('@alice');
 const avatar = await client.getAvatar(user);
 ```
 
-カードレンダラーは任意のアバター入力を受け取りますが、現在のMisskeyプロフィール取得経路では
-取得したアバターをレンダラーへまだ渡していません。
+Misskeyから取得したアバターを表面カードに表示します。アバターが未設定の場合や取得に失敗した場合は、
+代替画像でカードを生成します。内部ユーザIDは表面・裏面それぞれの右下に表示します。
 
 生成画像はサーバーへ保存せず、再読み込みやページ移動で破棄されます。画像レンダリングにはSharpと
 `assets/card-templates/default` の仮素材を使い、コンテナではNoto Sans CJKを読み込みます。

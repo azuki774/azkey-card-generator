@@ -19,7 +19,14 @@ export class MisskeyProfileSource implements ProfileSource {
 
   async getProfile(username: string): Promise<Profile> {
     const user = await this.client.getUserInfo(username);
-    return profileFromMisskeyUser(user);
+    const profile = profileFromMisskeyUser(user);
+    try {
+      const avatar = await this.client.getAvatar(user);
+      if (avatar) profile.avatar = avatar.data;
+    } catch {
+      // Avatar failures should use the renderer's fallback without losing the profile.
+    }
+    return profile;
   }
 }
 

@@ -58,3 +58,19 @@ test('back footer identifies the account independently of display name', async (
   assert.deepEqual(withName, changedName);
   assert.notDeepEqual(withName, changedUsername);
 });
+
+test('front and back footers change when the user ID is present', async () => {
+  const profiles = [baseProfile, { ...baseProfile, userId: '   ' }, { ...baseProfile, userId: 'id-a' }, { ...baseProfile, userId: 'id-b' }];
+  const cards = await Promise.all(profiles.map((profile) => renderCards(profile, date)));
+  const regions = await Promise.all(cards.flatMap((card) => [card.front, card.back]).map((image) =>
+    sharp(image).extract({ left: 432, top: 656, width: 704, height: 80 }).removeAlpha().raw().toBuffer(),
+  ));
+  for (const [empty, whitespace] of [[regions[0], regions[2]], [regions[1], regions[3]]] as const) {
+    assert.deepEqual(empty, whitespace);
+  }
+  for (const [empty, firstId, secondId] of [[regions[0], regions[4], regions[6]], [regions[1], regions[5], regions[7]]] as const) {
+    assert.notDeepEqual(empty, firstId);
+    assert.notDeepEqual(firstId, secondId);
+    assert.notDeepEqual(empty, secondId);
+  }
+});
