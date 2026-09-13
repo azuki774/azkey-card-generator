@@ -2,6 +2,7 @@ export interface Profile {
   username: string;
   displayName: string;
   notesCount: number;
+  registrationDate?: string;
   appRole?: string;
   userId?: string;
   avatar?: Buffer;
@@ -22,11 +23,14 @@ export class MisskeyProfileSource implements ProfileSource {
   }
 }
 
-export function profileFromMisskeyUser(user: Pick<MisskeyUserInfo, 'username' | 'name' | 'notesCount'>): Profile {
+export function profileFromMisskeyUser(user: Pick<MisskeyUserInfo, 'username' | 'name' | 'notesCount'> & Partial<Pick<MisskeyUserInfo, 'id' | 'createdAt'>>): Profile {
   const displayName = user.name?.trim() || user.username;
-  return {
+  const profile: Profile = {
     username: `@${user.username.replace(/^@/, '')}`,
     displayName,
     notesCount: user.notesCount,
   };
+  if (typeof user.id === 'string' && user.id.trim()) profile.userId = user.id;
+  if (typeof user.createdAt === 'string') profile.registrationDate = user.createdAt;
+  return profile;
 }

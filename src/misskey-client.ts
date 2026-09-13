@@ -11,6 +11,7 @@ export interface MisskeyUserInfo {
   username: string;
   name: string | null;
   notesCount: number;
+  createdAt?: string;
   avatarUrl: string | null;
   [key: string]: unknown;
 }

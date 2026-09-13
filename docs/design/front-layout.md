@@ -25,7 +25,8 @@ network fetch is performed.
 
 `appRole`, `userId`, and `avatar` are optional render inputs. `appRole` describes this
 application’s role for the profile and is independent of azkey roles. The current
-`MisskeyProfileSource` supplies the username, display name, and note count from Misskey;
+`MisskeyProfileSource` supplies the username, display name, note count, user ID, and
+registration date from Misskey;
 the renderer can use the optional fields when a caller provides them. The source does
 not fetch an avatar as part of profile mapping, and invalid or missing avatar data uses
 the local generated placeholder.
