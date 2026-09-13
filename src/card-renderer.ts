@@ -22,7 +22,8 @@ const FRONT = {
   title: { x: 64, y: 40, width: 800, size: 48, weight: 700, height: 64 }, logo: { x: 960, y: 40, size: 176 },
   avatar: { x: 64, y: 224, size: 320, radius: 24 }, panel: { x: 408, y: 200, width: 728, height: 368, radius: 24 },
   role: { x: 432, y: 224, width: 664, size: 32, minSize: 32, weight: 700, height: 48 }, name: { x: 432, y: 336, width: 664, size: 48, minSize: 24, weight: 800, height: 72 }, handle: { x: 432, y: 432, width: 664, size: 40, minSize: 24, weight: 700, height: 56 },
-  userId: { x: 1136, y: 688, width: 704, size: 24, minSize: 16, weight: 500, height: 32 },
+  footerHandle: { x: 1136, y: 656, width: 704, size: 22, minSize: 16, weight: 500 },
+  userId: { x: 1136, y: 696, width: 704, size: 18, minSize: 14, weight: 500 },
 } as const;
 const BACK = {
   title: { x: 64, y: 40, width: 800, size: 48, weight: 700 }, logo: { x: 960, y: 40, size: 176 },
@@ -74,11 +75,12 @@ async function avatarData(profile: Profile): Promise<string> {
 
 async function frontSvg(profile: Profile): Promise<Buffer> {
   const avatar = await avatarData(profile);
-  const [title, role, displayName, username, userId] = await Promise.all([
+  const [title, role, displayName, username, footerHandle, userId] = await Promise.all([
     textElement('Azuki Internet', FRONT.title.x, FRONT.title.y, FRONT.title.width, FRONT.title.size, FRONT.title.size, FRONT.title.weight),
     profile.appRole?.trim() ? textElement(profile.appRole, FRONT.role.x, FRONT.role.y, FRONT.role.width, FRONT.role.size, FRONT.role.minSize, FRONT.role.weight) : Promise.resolve(''),
     textElement(profile.displayName, FRONT.name.x, FRONT.name.y, FRONT.name.width, FRONT.name.size, FRONT.name.minSize, FRONT.name.weight),
     textElement(`@${profile.username.replace(/^@/, '')}`, FRONT.handle.x, FRONT.handle.y, FRONT.handle.width, FRONT.handle.size, FRONT.handle.minSize, FRONT.handle.weight, 'start', '#7654f5'),
+    textElement(`@${profile.username.replace(/^@/, '')}`, FRONT.footerHandle.x, FRONT.footerHandle.y, FRONT.footerHandle.width, FRONT.footerHandle.size, FRONT.footerHandle.minSize, FRONT.footerHandle.weight, 'end'),
     profile.userId?.trim() ? textElement(profile.userId, FRONT.userId.x, FRONT.userId.y, FRONT.userId.width, FRONT.userId.size, FRONT.userId.minSize, FRONT.userId.weight, 'end') : Promise.resolve(''),
   ]);
   const logo = Buffer.from(await readFile(resolve(cardAssetsDirectory, 'front/icons/placeholder.svg'))).toString('base64');
@@ -90,7 +92,7 @@ async function frontSvg(profile: Profile): Promise<Buffer> {
   <image x="${FRONT.logo.x}" y="${FRONT.logo.y}" width="${FRONT.logo.size}" height="${FRONT.logo.size}" href="data:image/svg+xml;base64,${logo}"/>
   <image x="${FRONT.avatar.x}" y="${FRONT.avatar.y}" width="${FRONT.avatar.size}" height="${FRONT.avatar.size}" preserveAspectRatio="xMidYMid slice" href="data:image/png;base64,${avatar}" clip-path="url(#avatar-clip)"/>
   ${role}${displayName}${username}
-  ${userId}
+  ${footerHandle}${userId}
 </svg>`);
 }
 

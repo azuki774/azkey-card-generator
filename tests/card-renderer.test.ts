@@ -74,3 +74,12 @@ test('front and back footers change when the user ID is present', async () => {
     assert.notDeepEqual(empty, secondId);
   }
 });
+
+test('front footer identifies the same account as the back footer', async () => {
+  const alice = await renderCards({ ...baseProfile, userId: 'user-id' }, date);
+  const bob = await renderCards({ ...baseProfile, username: '@bob', userId: 'user-id' }, date);
+  const footer = (image: Buffer) => sharp(image).extract({ left: 432, top: 656, width: 704, height: 80 }).removeAlpha().raw().toBuffer();
+  const [frontAlice, backAlice, frontBob] = await Promise.all([footer(alice.front), footer(alice.back), footer(bob.front)]);
+  assert.deepEqual(frontAlice, backAlice);
+  assert.notDeepEqual(frontAlice, frontBob);
+});
