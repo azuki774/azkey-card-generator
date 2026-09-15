@@ -11,6 +11,8 @@ export interface MisskeyUserInfo {
   username: string;
   name: string | null;
   notesCount: number;
+  followingCount?: number;
+  followersCount?: number;
   createdAt?: string;
   avatarUrl: string | null;
   [key: string]: unknown;
@@ -102,7 +104,13 @@ export class MisskeyClient {
     if (typeof user.id !== 'string' || typeof user.username !== 'string' || (user.name !== null && typeof user.name !== 'string') || typeof user.notesCount !== 'number' || !Number.isFinite(user.notesCount) || (user.avatarUrl !== null && typeof user.avatarUrl !== 'string')) {
       throw new MisskeyError('invalid_response', 'Misskey user object is missing required fields');
     }
-    return user as MisskeyUserInfo;
+    const normalizedUser = { ...user };
+    for (const field of ['followingCount', 'followersCount'] as const) {
+      const count = normalizedUser[field];
+      if (typeof count === 'number' && Number.isSafeInteger(count) && count >= 0) normalizedUser[field] = count;
+      else delete normalizedUser[field];
+    }
+    return normalizedUser as MisskeyUserInfo;
   }
 
   async getAvatar(userInfo: Pick<MisskeyUserInfo, 'avatarUrl'>): Promise<Avatar | null> {

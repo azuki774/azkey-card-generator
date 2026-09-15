@@ -21,15 +21,31 @@ test('client sends stripped username, preserves unknown fields, and downloads av
   const avatar = await sharp({ create: { width: 8, height: 8, channels: 4, background: '#7654f5' } }).png().toBuffer();
   await withServer((body, req, res) => {
     if (req.url === '/avatar') { res.setHeader('content-type', 'image/png'); res.end(avatar); return; }
-    if ((body as { username: string }).username === 'alice') { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ id: 'id', username: 'alice', name: ' Alice ', notesCount: 2, avatarUrl: `http://${req.headers.host}/avatar`, extra: true })); }
+    if ((body as { username: string }).username === 'alice') { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ id: 'id', username: 'alice', name: ' Alice ', notesCount: 2, followingCount: 12, followersCount: 34, avatarUrl: `http://${req.headers.host}/avatar`, extra: true })); }
   }, async (url) => {
     const client = new MisskeyClient({ baseUrl: url });
     const user = await client.getUserInfo('@alice');
     assert.equal(user.extra, true);
     assert.equal(user.username, 'alice');
+    assert.equal(user.followingCount, 12);
+    assert.equal(user.followersCount, 34);
     const downloaded = await client.getAvatar(user);
     assert.ok(downloaded);
     assert.equal((await sharp(downloaded.data).metadata()).format, 'png');
+  });
+});
+
+test('client omits invalid optional social counts', async () => {
+  await withServer((_body, _req, res) => {
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({
+      id: 'id', username: 'alice', name: null, notesCount: 0, avatarUrl: null,
+      followingCount: -1, followersCount: 1.5,
+    }));
+  }, async (url) => {
+    const user = await new MisskeyClient({ baseUrl: url }).getUserInfo('alice');
+    assert.equal('followingCount' in user, false);
+    assert.equal('followersCount' in user, false);
   });
 });
 
