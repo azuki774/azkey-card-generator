@@ -7,27 +7,26 @@ rasterized by Sharp.
 
 | Element | Box / position | Typography |
 | --- | --- | --- |
-| Title | x64, y40, w800, h64 | 48px bold |
+| Title | x64, y40, w800, h64 | `Azuki Internet / PROFILE CARD`, 48px down to 28px bold |
 | Placeholder mark | x960, y40, 176 × 176 | existing `front/icons/placeholder.svg` |
 | Avatar | x64, y224, 320 × 320 | cover crop, 24px radius |
 | Profile panel | x408, y200, 728 × 368 | white, 92% opacity, 24px radius |
 | App role | x432, y224, w664, h48 | 32px; omitted when empty |
 | Display name | x432, y336, w664, h72 | up to 48px bold |
 | Handle | x432, y432, w664, h56 | up to 40px |
-| Footer handle | right edge x1136, y656, w704 | up to 22px, right aligned |
-| User ID | right edge x1136, y696, w704 | up to 18px, right aligned |
+| Issuance date (UTC) | right edge x1136, y656, w704 | `YYYY-MM-DD`, no label, fixed 16px, right aligned |
+| Card UUID | right edge x1136, y696, w704 | no label, fixed 16px, right aligned |
 
-Names and handles shrink to 24px and then use a grapheme-safe ellipsis. User
-IDs shrink to 14px and footer handles to 16px; roles remain 32px and ellipsize.
-The footer repeats the handle above the internal user ID, matching the back. The renderer measures and
+Names and handles shrink to 24px and then use a grapheme-safe ellipsis. Both footer lines use fixed 16px text; roles remain 32px and ellipsize.
+The footer shows the issuance timestamp above the card UUID, matching the back. The renderer measures and
 embeds the same Sharp/Pango text raster, so fitting and output use identical
 glyphs. Avatar input
 is optional and invalid data falls back to a local generated placeholder; no
 network fetch is performed.
 
-`appRole`, `userId`, and `avatar` are optional render inputs. `appRole` describes this
+`appRole` and `avatar` are optional render inputs. The account `userId` is no longer displayed; the footer uses the issuance timestamp and card UUID. `appRole` describes this
 application’s role for the profile and is independent of azkey roles. The current
-`MisskeyProfileSource` supplies the username, display name, note count, user ID, and
+`MisskeyProfileSource` supplies the username, display name, note/following/follower counts, user ID, and
 registration date from Misskey, and downloads the avatar for the renderer.
 Missing or failed avatar downloads and invalid image data use the local generated
 placeholder.
@@ -39,7 +38,8 @@ normalization, and grapheme boundaries with a deterministic width function.
 Renderer tests cover the higher-risk avatar behavior: missing and corrupt inputs
 share the fallback, and a non-square input is center-cropped without stretching.
 The existing HTTP and render smoke tests cover PNG generation, literal Unicode
-and markup-looking display names, and optional role and user ID fields.
+and markup-looking display names, and optional role fields. Issuance tests verify new UUIDs per card pair, matching
+footers, timestamp changes, and independence from account IDs.
 
 Visual layout, whitespace, typography, and rounded clipping remain manual review
 items because those aesthetic details change frequently. The suite intentionally

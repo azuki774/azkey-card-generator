@@ -8,7 +8,7 @@ export function buildMockMisskey() {
     if (body.host !== null && body.host !== undefined) return reply.code(400).send({ error: { code: 'INVALID_HOST', message: 'Only local users are supported.' } });
     if (body.username !== 'alice') return reply.code(404).send({ error: { code: 'NO_SUCH_USER', message: 'No such user.' } });
     return {
-      id: 'mock-alice-id', username: 'alice', name: 'Alice', notesCount: 42, createdAt: '2020-02-03T04:05:06.000Z',
+      id: 'mock-alice-id', username: 'alice', name: 'Alice', notesCount: 42, followingCount: 123, followersCount: 456, createdAt: '2020-02-03T04:05:06.000Z',
       avatarUrl: `http://${request.headers.host ?? '127.0.0.1:4100'}/avatar.png`, unknownField: { preserved: true },
     };
   });

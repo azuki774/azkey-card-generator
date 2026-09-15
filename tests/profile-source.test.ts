@@ -16,11 +16,24 @@ test('profile mapping falls back from null, empty and whitespace names', () => {
 test('profile mapping carries optional user ID and registration date', () => {
   assert.deepEqual(profileFromMisskeyUser({
     id: 'misskey-user-id', username: 'alice', name: 'Alice', notesCount: 3,
+    followingCount: 12, followersCount: 34,
     createdAt: '2024-05-06T07:08:09.000Z',
   }), {
     username: '@alice', displayName: 'Alice', notesCount: 3,
+    followingCount: 12, followersCount: 34,
     userId: 'misskey-user-id', registrationDate: '2024-05-06T07:08:09.000Z',
   });
+});
+
+test('profile mapping omits absent, negative, fractional and unsafe social counts', () => {
+  assert.deepEqual(profileFromMisskeyUser({
+    username: 'alice', name: 'Alice', notesCount: 3,
+    followingCount: -1, followersCount: Number.MAX_SAFE_INTEGER + 1,
+  }), { username: '@alice', displayName: 'Alice', notesCount: 3 });
+  assert.deepEqual(profileFromMisskeyUser({
+    username: 'alice', name: 'Alice', notesCount: 3,
+    followingCount: 1.5, followersCount: Number.NaN,
+  }), { username: '@alice', displayName: 'Alice', notesCount: 3 });
 });
 
 test('profile mapping omits missing optional fields', () => {
@@ -73,6 +86,8 @@ test('mock Misskey avatar flows through profile source into the rendered card', 
     const client = new MisskeyClient({ baseUrl: `http://127.0.0.1:${address.port}` });
     const profile = await new MisskeyProfileSource(client).getProfile('@alice');
     assert.equal(profile.userId, 'mock-alice-id');
+    assert.equal(profile.followingCount, 123);
+    assert.equal(profile.followersCount, 456);
     assert.ok(profile.avatar);
     const cards = await renderCards(profile, new Date('2026-01-01T00:00:00.000Z'));
     const pixel = await sharp(cards.front).extract({ left: 224, top: 384, width: 1, height: 1 }).removeAlpha().raw().toBuffer();
