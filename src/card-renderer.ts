@@ -30,6 +30,7 @@ const FRONT = {
 } as const;
 const BACK = {
   title: { x: 64, y: 40, width: 800, size: 48, weight: 700 }, logo: { x: 960, y: 40, size: 176 },
+  identity: { x: 108, y: 160, width: 800, nameWidth: 440, gap: 16, size: 28, minSize: 20, weight: 700 },
   notesLabel: { x: 108, y: 240, width: 360, size: 26, minSize: 24, weight: 700 }, notes: { x: 108, y: 282, width: 420, size: 34, minSize: 24, weight: 800 },
   issuedAt: { x: 1136, y: 656, width: 704, size: 16, minSize: 16, weight: 500 },
   cardId: { x: 1136, y: 696, width: 704, size: 16, minSize: 16, weight: 500 },
@@ -57,11 +58,43 @@ async function renderedWidth(value: string, size: number, weight: number): Promi
 }
 
 async function textElement(value: string, x: number, top: number, width: number, maxSize: number, minSize: number, weight: number, anchor = 'start', fill = '#242032'): Promise<string> {
+  return (await textElementWithWidth(value, x, top, width, maxSize, minSize, weight, anchor, fill)).element;
+}
+
+async function textElementWithWidth(value: string, x: number, top: number, width: number, maxSize: number, minSize: number, weight: number, anchor = 'start', fill = '#242032'): Promise<{ element: string; width: number }> {
   const fitted = await fitText(value, { maxWidth: width, maxSize, minSize }, (text, size) => renderedWidth(text, size, weight));
-  if (!fitted.text) return '';
+  if (!fitted.text) return { element: '', width: 0 };
   const raster = await rasterText(fitted.text, fitted.size, weight, fill);
   const imageX = anchor === 'end' ? x - raster.width : x;
-  return `<image x="${imageX}" y="${top}" width="${raster.width}" height="${raster.height}" href="data:image/png;base64,${raster.data}"/>`;
+  return {
+    element: `<image x="${imageX}" y="${top}" width="${raster.width}" height="${raster.height}" href="data:image/png;base64,${raster.data}"/>`,
+    width: raster.width,
+  };
+}
+
+async function identityElements(profile: Profile): Promise<string> {
+  const name = await textElementWithWidth(
+    profile.displayName,
+    BACK.identity.x,
+    BACK.identity.y,
+    BACK.identity.nameWidth,
+    BACK.identity.size,
+    BACK.identity.minSize,
+    BACK.identity.weight,
+  );
+  const gap = name.width > 0 ? BACK.identity.gap : 0;
+  const handle = await textElementWithWidth(
+    `@${profile.username.replace(/^@/, '')}`,
+    BACK.identity.x + name.width + gap,
+    BACK.identity.y,
+    Math.max(BACK.identity.width - name.width - gap, 0),
+    BACK.identity.size,
+    BACK.identity.minSize,
+    BACK.identity.weight,
+    'start',
+    '#7654f5',
+  );
+  return name.element + handle.element;
 }
 
 async function avatarData(profile: Profile): Promise<string> {
@@ -122,8 +155,9 @@ async function backSvg(profile: Profile, generatedAt: Date, cardId: string): Pro
     ]);
     return heading + count;
   }));
-  const [title, logo, issuedAt, cardIdText] = await Promise.all([
+  const [title, identity, logo, issuedAt, cardIdText] = await Promise.all([
     textElement('Azuki Internet / PROFILE CARD', BACK.title.x, BACK.title.y, BACK.title.width, BACK.title.size, 28, BACK.title.weight),
+    identityElements(profile),
     readFile(resolve(cardAssetsDirectory, 'front/icons/placeholder.svg')),
     textElement(formatIssuedAt(generatedAt), BACK.issuedAt.x, BACK.issuedAt.y, BACK.issuedAt.width, BACK.issuedAt.size, BACK.issuedAt.minSize, BACK.issuedAt.weight, 'end'),
     textElement(cardId, BACK.cardId.x, BACK.cardId.y, BACK.cardId.width, BACK.cardId.size, BACK.cardId.minSize, BACK.cardId.weight, 'end'),
@@ -132,7 +166,7 @@ async function backSvg(profile: Profile, generatedAt: Date, cardId: string): Pro
 <svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" viewBox="0 0 ${CARD_WIDTH} ${CARD_HEIGHT}">
   ${title}
   <image x="${BACK.logo.x}" y="${BACK.logo.y}" width="${BACK.logo.size}" height="${BACK.logo.size}" href="data:image/svg+xml;base64,${logo.toString('base64')}"/>
-  ${statistics.join('')}${issuedAt}${cardIdText}
+  ${identity}${statistics.join('')}${issuedAt}${cardIdText}
 </svg>`);
 }
 
