@@ -99,8 +99,8 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
         .send({
           generatedAt: generatedAt.toISOString(),
           cards: {
-            front: serializeCard(cards.front, 'azkey-card-front.png'),
-            back: serializeCard(cards.back, 'azkey-card-back.png'),
+            front: serializeCard(cards.front, `front-azkcard-${cards.cardId}.png`),
+            back: serializeCard(cards.back, `back-azkcard-${cards.cardId}.png`),
           },
         });
     } catch (error) {

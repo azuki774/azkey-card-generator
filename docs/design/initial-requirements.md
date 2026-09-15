@@ -124,12 +124,12 @@ PNG をメモリ上で保持するだけで、ファイルやデータベース�
     "front": {
       "data": "<standard-base64-without-line-breaks>",
       "mediaType": "image/png",
-      "fileName": "azkey-card-front.png"
+      "fileName": "front-azkcard-93e97edb-b33e-4af6-a6e1-fad674a5b11b.png"
     },
     "back": {
       "data": "<standard-base64-without-line-breaks>",
       "mediaType": "image/png",
-      "fileName": "azkey-card-back.png"
+      "fileName": "back-azkcard-93e97edb-b33e-4af6-a6e1-fad674a5b11b.png"
     }
   }
 }

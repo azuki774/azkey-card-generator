@@ -199,7 +199,8 @@ CardProfile
 - `POST /cards` は `application/x-www-form-urlencoded` の `username` フィールドを受け付ける。
 - 成功時は `200 application/json` とし、サーバーは PNG をファイルやデータベースへ保存しない。
 - 応答には `Cache-Control: no-store` と `X-Content-Type-Options: nosniff` を設定する。
-- JSON の `data` は改行なしの標準 base64、`mediaType` は `image/png`、`fileName` は安全な固定名とする。
+- JSON の `data` は改行なしの標準 base64、`mediaType` は `image/png`、`fileName` はカード UUID を含む
+  `front-azkcard-<uuid>.png` または `back-azkcard-<uuid>.png` とする。
 - ブラウザは `data` をデコードして Blob URL を作り、`fileName` をダウンロード名として表面・裏面を個別に提供する。
 - クライアントは表示更新時に古い Blob URL を revoke し、再読み込み・ページ移動後に結果を復元しない。
 - テンプレート素材は `assets/card-templates/<template-name>/{front,back}` に配置する。各面の
@@ -216,12 +217,12 @@ CardProfile
     "front": {
       "data": "<standard-base64-without-line-breaks>",
       "mediaType": "image/png",
-      "fileName": "azkey-card-front.png"
+      "fileName": "front-azkcard-93e97edb-b33e-4af6-a6e1-fad674a5b11b.png"
     },
     "back": {
       "data": "<standard-base64-without-line-breaks>",
       "mediaType": "image/png",
-      "fileName": "azkey-card-back.png"
+      "fileName": "back-azkcard-93e97edb-b33e-4af6-a6e1-fad674a5b11b.png"
     }
   }
 }

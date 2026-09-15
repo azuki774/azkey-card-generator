@@ -3,7 +3,10 @@ import test from 'node:test';
 
 import sharp from 'sharp';
 
-import { renderCards } from '../src/card-renderer.js';
+import { renderCards as issueCards } from '../src/card-renderer.js';
+
+const cardId = '93e97edb-b33e-4af6-a6e1-fad674a5b11b';
+const renderCards = (profile: Parameters<typeof issueCards>[0], date: Date) => issueCards(profile, date, cardId);
 
 const date = new Date('2026-01-01T00:00:00.000Z');
 const baseProfile = { username: '@alice', displayName: 'Alice', notesCount: 0 };
@@ -36,50 +39,66 @@ test('supplied avatars use a centered cover crop without stretching', async () =
   }
 });
 
-test('back registration date uses UTC date and em dash fallback', async () => {
-  const profile = { ...baseProfile, registrationDate: '2024-05-06T00:30:00.000Z' };
-  const sameInstant = { ...baseProfile, registrationDate: '2024-05-05T20:30:00-04:00' };
-  const [dated, equivalent, missing, invalid, nextDay] = await Promise.all([
-    renderCards(profile, date), renderCards(sameInstant, date),
-    renderCards(baseProfile, date), renderCards({ ...baseProfile, registrationDate: 'not-a-date' }, date),
-    renderCards({ ...baseProfile, registrationDate: '2024-05-07T00:30:00.000Z' }, date),
+test('back retains registration date in UTC with missing and invalid fallback', async () => {
+  const missing = await renderCards(baseProfile, date);
+  const invalid = await renderCards({ ...baseProfile, registrationDate: 'invalid' }, date);
+  const registered = await renderCards({ ...baseProfile, registrationDate: '2024-05-06T00:30:00Z' }, date);
+  const equivalent = await renderCards({ ...baseProfile, registrationDate: '2024-05-05T20:30:00-04:00' }, date);
+  assert.deepEqual(await decoded(missing.back), await decoded(invalid.back));
+  assert.deepEqual(await decoded(registered.back), await decoded(equivalent.back));
+  assert.notDeepEqual(await decoded(missing.back), await decoded(registered.back));
+  assert.deepEqual(await footer(missing.back), await footer(registered.back));
+});
+
+const footer = (image: Buffer) => sharp(image).extract({ left: 432, top: 656, width: 704, height: 80 }).raw().toBuffer();
+
+test('both footers share issuance details independently of account identifiers', async () => {
+  const first = await renderCards({ ...baseProfile, userId: 'account-a' }, date);
+  const other = await renderCards({ ...baseProfile, username: '@bob', userId: 'account-b' }, date);
+  assert.deepEqual(await footer(first.front), await footer(first.back));
+  assert.deepEqual(await footer(first.front), await footer(other.front));
+  assert.deepEqual(await footer(first.back), await footer(other.back));
+});
+
+test('issuance timestamp and UUID each affect both footers', async () => {
+  const first = await renderCards(baseProfile, date);
+  const later = await renderCards(baseProfile, new Date('2026-01-02T03:04:05Z'));
+  const otherId = await issueCards(baseProfile, date, 'f8b9d73c-6df7-41cc-97ee-20df523f1201');
+  for (const side of ['front', 'back'] as const) {
+    assert.notDeepEqual(await footer(first[side]), await footer(later[side]));
+    assert.notDeepEqual(await footer(first[side]), await footer(otherId[side]));
+  }
+});
+
+test('each issuance generates a new UUID shared by both sides', async () => {
+  const first = await issueCards(baseProfile, date);
+  const second = await issueCards(baseProfile, date);
+  assert.match(first.cardId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.notEqual(first.cardId, second.cardId);
+  const reproduced = await issueCards(baseProfile, date, first.cardId);
+  assert.deepEqual(await decoded(first.front), await decoded(reproduced.front));
+  assert.deepEqual(await decoded(first.back), await decoded(reproduced.back));
+  assert.deepEqual(await footer(first.front), await footer(first.back));
+  assert.deepEqual(await footer(second.front), await footer(second.back));
+  assert.notDeepEqual(await footer(first.front), await footer(second.front));
+});
+
+test('back counts distinguish zero from unavailable and update independently', async () => {
+  const missing = await renderCards(baseProfile, date);
+  const zero = await renderCards({ ...baseProfile, followingCount: 0, followersCount: 0 }, date);
+  const counts = await renderCards({ ...baseProfile, followingCount: 1234, followersCount: 5678 }, date);
+  const invalid = await renderCards({ ...baseProfile, followingCount: -1, followersCount: NaN }, date);
+  assert.deepEqual(await decoded(missing.back), await decoded(invalid.back));
+  assert.notDeepEqual(await decoded(missing.back), await decoded(zero.back));
+  assert.notDeepEqual(await decoded(zero.back), await decoded(counts.back));
+  assert.deepEqual(await decoded(missing.front), await decoded(counts.front));
+});
+
+test('front and back use the same background image', async () => {
+  const cards = await renderCards(baseProfile, date);
+  const [frontPixel, backPixel] = await Promise.all([
+    sharp(cards.front).extract({ left: 20, top: 700, width: 1, height: 1 }).removeAlpha().raw().toBuffer(),
+    sharp(cards.back).extract({ left: 20, top: 700, width: 1, height: 1 }).removeAlpha().raw().toBuffer(),
   ]);
-  const backs = await Promise.all([dated, equivalent, missing, invalid, nextDay].map((cards) => decoded(cards.back)));
-  assert.deepEqual(backs[0], backs[1]);
-  assert.deepEqual(backs[2], backs[3]);
-  assert.notDeepEqual(backs[0], backs[4]);
-  assert.notDeepEqual(backs[2], backs[4]);
-});
-
-test('back footer identifies the account independently of display name', async () => {
-  const withName = await decoded((await renderCards({ ...baseProfile, displayName: 'Alice', userId: 'user-id' }, date)).back);
-  const changedName = await decoded((await renderCards({ ...baseProfile, displayName: '別の表示名', userId: 'user-id' }, date)).back);
-  const changedUsername = await decoded((await renderCards({ ...baseProfile, username: '@bob', displayName: 'Alice', userId: 'user-id' }, date)).back);
-  assert.deepEqual(withName, changedName);
-  assert.notDeepEqual(withName, changedUsername);
-});
-
-test('front and back footers change when the user ID is present', async () => {
-  const profiles = [baseProfile, { ...baseProfile, userId: '   ' }, { ...baseProfile, userId: 'id-a' }, { ...baseProfile, userId: 'id-b' }];
-  const cards = await Promise.all(profiles.map((profile) => renderCards(profile, date)));
-  const regions = await Promise.all(cards.flatMap((card) => [card.front, card.back]).map((image) =>
-    sharp(image).extract({ left: 432, top: 656, width: 704, height: 80 }).removeAlpha().raw().toBuffer(),
-  ));
-  for (const [empty, whitespace] of [[regions[0], regions[2]], [regions[1], regions[3]]] as const) {
-    assert.deepEqual(empty, whitespace);
-  }
-  for (const [empty, firstId, secondId] of [[regions[0], regions[4], regions[6]], [regions[1], regions[5], regions[7]]] as const) {
-    assert.notDeepEqual(empty, firstId);
-    assert.notDeepEqual(firstId, secondId);
-    assert.notDeepEqual(empty, secondId);
-  }
-});
-
-test('front footer identifies the same account as the back footer', async () => {
-  const alice = await renderCards({ ...baseProfile, userId: 'user-id' }, date);
-  const bob = await renderCards({ ...baseProfile, username: '@bob', userId: 'user-id' }, date);
-  const footer = (image: Buffer) => sharp(image).extract({ left: 432, top: 656, width: 704, height: 80 }).removeAlpha().raw().toBuffer();
-  const [frontAlice, backAlice, frontBob] = await Promise.all([footer(alice.front), footer(alice.back), footer(bob.front)]);
-  assert.deepEqual(frontAlice, backAlice);
-  assert.notDeepEqual(frontAlice, frontBob);
+  assert.deepEqual(frontPixel, backPixel);
 });

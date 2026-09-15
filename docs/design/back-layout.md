@@ -1,12 +1,20 @@
 # Back card layout
 
 The back is rendered at 1200 × 760 pixels over the shared front base image.
-The title and logo occupy the same top positions as the front. Note count and
-registration date are stacked on the left at approximately y=290 and y=454.
-The handle and optional user ID are stacked and right-aligned near the lower
-edge using the front card's fitting policy.
+Both sides use the title `Azuki Internet / PROFILE CARD` and the same logo.
+The back body stacks ノート数, フォロー数, フォロワー数, and 登録日 at x=108.
+Labels start at y=240, 336, 432, 528; values at y=282, 378, 474, 570. Counts use comma
+grouping; missing or invalid counts display `—`, while zero displays `0`.
+The account registration date uses UTC `YYYY-MM-DD`; missing or invalid dates
+display `—`. It is distinct from the issuance timestamp in the footer.
 
-Note counts use comma grouping. Registration timestamps from Misskey are
-converted to UTC `YYYY-MM-DD`; missing or invalid timestamps display `—`.
-Handles and IDs shrink and receive a grapheme-safe ellipsis when they exceed
-their allotted width.
+Both lower-right footers display the issuance date in UTC `YYYY-MM-DD` and
+the card UUID without labels. Both lines use the same fixed 16px font size. Node.js `crypto.randomUUID()` generates a UUID v4
+once per card pair. Reissuing a card generates a new UUID, including when the
+profile and timestamp are identical. This identifier is independent of the
+Misskey account ID and is not persisted on the server. A caller may supply a
+UUID to the renderer for reproducible rendering in tests.
+
+The renderer returns `cardId` alongside the two image buffers. The HTTP response
+uses this same UUID in `front-azkcard-<uuid>.png` and `back-azkcard-<uuid>.png`.
+The browser uses the existing `fileName` response field for downloads.

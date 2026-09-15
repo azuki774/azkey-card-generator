@@ -126,7 +126,7 @@ test('POST /cards returns both PNG cards using the documented JSON contract', as
   const app = buildApp({
     now: () => generatedAt,
     profileSource: { getProfile: async (username) => ({ username, displayName: 'Alice', notesCount: 0 }) },
-    render: async () => ({ front: Buffer.from('front-png'), back: Buffer.from('back-png') }),
+    render: async () => ({ cardId: '93e97edb-b33e-4af6-a6e1-fad674a5b11b', front: Buffer.from('front-png'), back: Buffer.from('back-png') }),
   });
   try {
     const response = await app.inject({
@@ -142,8 +142,8 @@ test('POST /cards returns both PNG cards using the documented JSON contract', as
     assert.deepEqual(response.json(), {
       generatedAt: '2026-01-01T00:00:00.000Z',
       cards: {
-        front: { data: Buffer.from('front-png').toString('base64'), mediaType: 'image/png', fileName: 'azkey-card-front.png' },
-        back: { data: Buffer.from('back-png').toString('base64'), mediaType: 'image/png', fileName: 'azkey-card-back.png' },
+        front: { data: Buffer.from('front-png').toString('base64'), mediaType: 'image/png', fileName: 'front-azkcard-93e97edb-b33e-4af6-a6e1-fad674a5b11b.png' },
+        back: { data: Buffer.from('back-png').toString('base64'), mediaType: 'image/png', fileName: 'back-azkcard-93e97edb-b33e-4af6-a6e1-fad674a5b11b.png' },
       },
     });
   } finally {
@@ -160,7 +160,7 @@ test('POST /cards normalizes an unprefixed username before loading the profile',
         return { username, displayName: 'Alice', notesCount: 0 };
       },
     },
-    render: async () => ({ front: Buffer.from('front-png'), back: Buffer.from('back-png') }),
+    render: async () => ({ cardId: '93e97edb-b33e-4af6-a6e1-fad674a5b11b', front: Buffer.from('front-png'), back: Buffer.from('back-png') }),
   });
   try {
     for (const name of ['alice', 'a'.repeat(21), 'a'.repeat(100)]) {
@@ -286,5 +286,30 @@ test('/cards maps profile source failures to safe status codes', async () => {
       const response = await app.inject({ method: 'POST', url: '/cards', payload: 'username=alice', headers: { 'content-type': 'application/x-www-form-urlencoded' } });
       assert.equal(response.statusCode, status); assert.equal(response.json().error.code, code);
     } finally { await app.close(); }
+  }
+});
+
+test('reissuing a card changes filenames and uses the rendered UUID', async () => {
+  const issuedIds: string[] = [];
+  const app = buildApp({
+    profileSource: stubProfileSource,
+    now: () => Date.parse('2026-01-01T00:00:00Z'),
+    render: async (profile, date) => {
+      const cards = await renderCards(profile, date);
+      issuedIds.push(cards.cardId);
+      return cards;
+    },
+  });
+  try {
+    for (let index = 0; index < 2; index++) {
+      const response = await app.inject({ method: 'POST', url: '/cards', payload: { username: 'alice' } });
+      assert.equal(response.statusCode, 200);
+      const { cards } = response.json();
+      assert.equal(cards.front.fileName, `front-azkcard-${issuedIds[index]}.png`);
+      assert.equal(cards.back.fileName, `back-azkcard-${issuedIds[index]}.png`);
+    }
+    assert.notEqual(issuedIds[0], issuedIds[1]);
+  } finally {
+    await app.close();
   }
 });
