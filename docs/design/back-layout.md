@@ -5,6 +5,8 @@ Both sides use the title `Azuki Internet / PROFILE CARD` and the same logo.
 The back body stacks ノート数, フォロー数, フォロワー数, and 登録日 at x=108.
 The account display name and @username appear on one line at x=108, y=160 above the statistics.
 The display name is black and bold; the @username is purple (`#7654f5`) and bold.
+Both values stay on one line. Each value shrinks from 28px to 24px until it fits
+its unchanged width; if it still does not fit, it uses a grapheme-safe ellipsis.
 The display name is fitted within 440px, then the @username uses the remaining width
 after a 16px gap, so long identities do not overlap.
 Labels start at y=240, 336, 432, 528; values at y=282, 378, 474, 570. Counts use comma
