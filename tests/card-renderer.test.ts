@@ -96,9 +96,15 @@ test('back counts distinguish zero from unavailable and update independently', a
 
 test('front and back use the same background image', async () => {
   const cards = await renderCards(baseProfile, date);
-  const [frontPixel, backPixel] = await Promise.all([
+  const [frontPixel, backPixel, frontCentralPixel, backCentralPixel, frontLowerCentralPixel, backLowerCentralPixel] = await Promise.all([
     sharp(cards.front).extract({ left: 20, top: 700, width: 1, height: 1 }).removeAlpha().raw().toBuffer(),
     sharp(cards.back).extract({ left: 20, top: 700, width: 1, height: 1 }).removeAlpha().raw().toBuffer(),
+    sharp(cards.front).extract({ left: 600, top: 300, width: 1, height: 1 }).removeAlpha().raw().toBuffer(),
+    sharp(cards.back).extract({ left: 600, top: 300, width: 1, height: 1 }).removeAlpha().raw().toBuffer(),
+    sharp(cards.front).extract({ left: 650, top: 400, width: 1, height: 1 }).removeAlpha().raw().toBuffer(),
+    sharp(cards.back).extract({ left: 650, top: 400, width: 1, height: 1 }).removeAlpha().raw().toBuffer(),
   ]);
   assert.deepEqual(frontPixel, backPixel);
+  assert.deepEqual(frontCentralPixel, backCentralPixel);
+  assert.deepEqual(frontLowerCentralPixel, backLowerCentralPixel);
 });
