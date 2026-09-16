@@ -1,6 +1,8 @@
 # Back card layout
 
-The back is rendered at 1200 × 760 pixels over the shared front base image.
+The back is rendered at 1200 × 760 pixels over the shared front base image. Both
+sides use the same translucent white panel at x=408, y=200, 728 × 368 with a
+24px radius, so the central background has the same appearance on each side.
 Both sides use the title `Azuki Internet / PROFILE CARD` and the same logo.
 The back body stacks ノート数, フォロー数, フォロワー数, and 登録日 at x=108.
 The account display name and @username appear on one line at x=108, y=160 above the statistics.
