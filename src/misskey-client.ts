@@ -3,19 +3,16 @@ import sharp from 'sharp';
 const DEFAULT_TIMEOUT_MS = 5_000;
 const MAX_JSON_BYTES = 1_024 * 1_024;
 const MAX_AVATAR_BYTES = 5 * 1_024 * 1_024;
-// Rendered avatar slot is 320x320px (102_400 pixels). 4M pixels (~39x the
-// output area) leaves ample headroom for cover-crop quality while bounding
-// 8-bit RGBA pixel data to ~16MB (4M * 4 bytes), versus ~100MB at
-// the previous 25M pixel limit. The compressed download cap below is
-// intentionally unchanged: this limit bounds *decoded dimensions*, which a
-// small compressed file can still exceed.
+// 4M input pixels leave cover-crop headroom for the 320x320 avatar slot.
+// The 5MiB download cap alone cannot bound decoded dimensions. 4M pixels
+// use ~16MB as 8-bit RGBA, but this is not an RSS limit: codec state,
+// metadata and intermediate buffers add native memory even when resizing.
+// Concurrent requests multiply usage; deployment CPU/memory/PID limits
+// are still required (Node's heap limit does not bound native memory).
 export const MAX_INPUT_PIXELS = 4_000_000;
 export const AVATAR_SIZE_PX = 320;
-// Native (libvips) per-image processing bound supported by the installed
-// sharp (`pipeline.timeout()`). This is a best-effort processing guard, not
-// a hard end-to-end deadline or a memory bound:
-// resizing does not eliminate decoder working memory (see
-// docs/security-avatar-memory.md).
+// Best-effort Sharp processing timeout, not a memory bound or a hard
+// deadline covering metadata parsing, queue time and all native work.
 export const AVATAR_PROCESS_TIMEOUT_SECONDS = 5;
 const AVATAR_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 
@@ -126,6 +123,7 @@ export class MisskeyClient {
     return normalizedUser as MisskeyUserInfo;
   }
 
+  /** Returns a card-ready 320x320 PNG, not the original image/animation. */
   async getAvatar(userInfo: Pick<MisskeyUserInfo, 'avatarUrl'>): Promise<Avatar | null> {
     if (!userInfo.avatarUrl) return null;
     let avatarUrl: URL;
@@ -154,9 +152,9 @@ export class MisskeyClient {
       // at the metadata stage, but re-check explicitly so the bound holds even
       // if decoder metadata reporting changes.
       if (metadata.width * metadata.height > MAX_INPUT_PIXELS) throw new Error('image exceeds pixel limit');
-      // Normalize to the exact bounded size the card renderer consumes, so no
-      // full-resolution decode is retained or passed downstream. Center-cover
-      // semantics match the renderer (320x320 cover, centred).
+      // Validate by normalizing to the renderer's center-cover size. Do not
+      // reintroduce raw().toBuffer() on the original: it retains a full-size
+      // pixel buffer. Only this small PNG should be passed downstream.
       const normalized = await image
         .timeout({ seconds: AVATAR_PROCESS_TIMEOUT_SECONDS })
         .resize(AVATAR_SIZE_PX, AVATAR_SIZE_PX, { fit: 'cover', position: 'centre' })
