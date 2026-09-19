@@ -14,14 +14,34 @@ export interface ProfileSource {
   getProfile(username: string): Promise<Profile>;
 }
 
-import { MisskeyClient, type MisskeyUserInfo } from './misskey-client.js';
+import { MisskeyClient, MisskeyError, type MisskeyUserInfo } from './misskey-client.js';
 import { normalizeRoleUsername } from './roles.js';
 
 export class MisskeyProfileSource implements ProfileSource {
-  constructor(private readonly client: MisskeyClient, private readonly appRoles: ReadonlyMap<string, string> = new Map()) {}
+  constructor(
+    private readonly client: MisskeyClient,
+    private readonly onUpstreamRateLimited?: (error: MisskeyError) => void,
+    private readonly appRoles: ReadonlyMap<string, string> = new Map(),
+  ) {}
+
+  private notifyRateLimited(error: unknown): void {
+    if (error instanceof MisskeyError && error.kind === 'rate_limited') {
+      try {
+        this.onUpstreamRateLimited?.(error);
+      } catch {
+        // Cooldown bookkeeping must never break profile delivery.
+      }
+    }
+  }
 
   async getProfile(username: string): Promise<Profile> {
-    const user = await this.client.getUserInfo(username);
+    let user;
+    try {
+      user = await this.client.getUserInfo(username);
+    } catch (error) {
+      this.notifyRateLimited(error);
+      throw error;
+    }
     const profile = profileFromMisskeyUser(user);
     const normalizedUsername = normalizeRoleUsername(user.username);
     if (normalizedUsername !== undefined) {
@@ -31,8 +51,11 @@ export class MisskeyProfileSource implements ProfileSource {
     try {
       const avatar = await this.client.getAvatar(user);
       if (avatar) profile.avatar = avatar.data;
-    } catch {
-      // Avatar failures should use the renderer's fallback without losing the profile.
+    } catch (error) {
+      // Avatar 429 still cools down upstream even though the profile itself
+      // is served with the renderer's fallback image.
+      this.notifyRateLimited(error);
+      // Other avatar failures use the renderer's fallback without losing the profile.
     }
     return profile;
   }

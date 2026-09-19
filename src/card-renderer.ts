@@ -21,16 +21,17 @@ const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const cardAssetsDirectory = resolve(sourceDirectory, '../assets/card-templates/default');
 const cardBackgroundPath = resolve(cardAssetsDirectory, 'front/base.png');
 const fontFamily = 'Noto Sans CJK JP';
+const PANEL = { x: 408, y: 200, width: 728, height: 368, radius: 24 } as const;
 const FRONT = {
   title: { x: 64, y: 40, width: 800, size: 48, weight: 700, height: 64 }, logo: { x: 960, y: 40, size: 176 },
-  avatar: { x: 64, y: 224, size: 320, radius: 24 }, panel: { x: 408, y: 200, width: 728, height: 368, radius: 24 },
-  role: { x: 432, y: 248, width: 664, size: 32, minSize: 32, weight: 700, height: 48 }, name: { x: 432, y: 336, width: 664, size: 48, minSize: 24, weight: 800, height: 72 }, handle: { x: 432, y: 432, width: 664, size: 40, minSize: 24, weight: 700, height: 56 },
+  avatar: { x: 64, y: 224, size: 320, radius: 24 },
+  role: { x: 432, y: 248, width: 664, size: 32, minSize: 32, weight: 700, height: 48 }, name: { x: 432, y: 336, width: 664, size: 48, minSize: 36, weight: 800, height: 72 }, handle: { x: 432, y: 432, width: 664, size: 40, minSize: 32, weight: 700, height: 56 },
   issuedAt: { x: 1136, y: 656, width: 704, size: 16, minSize: 16, weight: 500 },
   cardId: { x: 1136, y: 696, width: 704, size: 16, minSize: 16, weight: 500 },
 } as const;
 const BACK = {
   title: { x: 64, y: 40, width: 800, size: 48, weight: 700 }, logo: { x: 960, y: 40, size: 176 },
-  identity: { x: 108, y: 160, width: 800, nameWidth: 440, gap: 16, size: 28, minSize: 20, weight: 700 },
+  identity: { x: 108, y: 160, width: 800, nameWidth: 440, gap: 16, size: 28, minSize: 24, weight: 700 },
   notesLabel: { x: 108, y: 240, width: 360, size: 26, minSize: 24, weight: 700 }, notes: { x: 108, y: 282, width: 420, size: 34, minSize: 24, weight: 800 },
   issuedAt: { x: 1136, y: 656, width: 704, size: 16, minSize: 16, weight: 500 },
   cardId: { x: 1136, y: 696, width: 704, size: 16, minSize: 16, weight: 500 },
@@ -42,6 +43,10 @@ function escapeXml(value: string): string {
 
 function formatIssuedAt(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+function panelElement(): string {
+  return `<rect x="${PANEL.x}" y="${PANEL.y}" width="${PANEL.width}" height="${PANEL.height}" rx="${PANEL.radius}" fill="#fff" opacity=".92"/>`;
 }
 
 async function rasterText(value: string, size: number, weight: number, fill: string): Promise<{ data: string; width: number; height: number }> {
@@ -120,7 +125,7 @@ async function frontSvg(profile: Profile, generatedAt: Date, cardId: string): Pr
   return Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" viewBox="0 0 ${CARD_WIDTH} ${CARD_HEIGHT}">
   <defs><clipPath id="avatar-clip"><rect x="${FRONT.avatar.x}" y="${FRONT.avatar.y}" width="${FRONT.avatar.size}" height="${FRONT.avatar.size}" rx="${FRONT.avatar.radius}"/></clipPath></defs>
-  <rect x="${FRONT.panel.x}" y="${FRONT.panel.y}" width="${FRONT.panel.width}" height="${FRONT.panel.height}" rx="${FRONT.panel.radius}" fill="#fff" opacity=".92"/>
+  ${panelElement()}
   ${title}
   <image x="${FRONT.logo.x}" y="${FRONT.logo.y}" width="${FRONT.logo.size}" height="${FRONT.logo.size}" href="data:image/svg+xml;base64,${logo}"/>
   <image x="${FRONT.avatar.x}" y="${FRONT.avatar.y}" width="${FRONT.avatar.size}" height="${FRONT.avatar.size}" preserveAspectRatio="xMidYMid slice" href="data:image/png;base64,${avatar}" clip-path="url(#avatar-clip)"/>
@@ -164,6 +169,7 @@ async function backSvg(profile: Profile, generatedAt: Date, cardId: string): Pro
   ]);
   return Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" viewBox="0 0 ${CARD_WIDTH} ${CARD_HEIGHT}">
+  ${panelElement()}
   ${title}
   <image x="${BACK.logo.x}" y="${BACK.logo.y}" width="${BACK.logo.size}" height="${BACK.logo.size}" href="data:image/svg+xml;base64,${logo.toString('base64')}"/>
   ${identity}${statistics.join('')}${issuedAt}${cardIdText}

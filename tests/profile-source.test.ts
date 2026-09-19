@@ -60,7 +60,7 @@ test('MisskeyProfileSource matches roles against the API username, not the input
   const source = new MisskeyProfileSource(clientStub({
     getUserInfo: async () => ({ id: 'alice', username: 'AlIcE', name: 'Alice', notesCount: 3, avatarUrl: null }),
     getAvatar: async () => null,
-  }), new Map([
+  }), undefined, new Map([
     ['alice', '対象'],
     ['input-name', '入力値の役職'],
   ]));
@@ -73,7 +73,7 @@ test('MisskeyProfileSource leaves non-target API usernames without a role', asyn
   const source = new MisskeyProfileSource(clientStub({
     getUserInfo: async () => ({ id: 'alice', username: 'not-target', name: 'Alice', notesCount: 3, avatarUrl: null }),
     getAvatar: async () => null,
-  }), new Map([['alice', '対象']]));
+  }), undefined, new Map([['alice', '対象']]));
 
   const profile = await source.getProfile('@alice');
   assert.equal(profile.appRole, undefined);

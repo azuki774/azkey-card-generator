@@ -70,8 +70,18 @@ PNGを生成し、base64を含むJSONとして返します。ブラウザはこ�
 両面のプレビューと個別ダウンロードを提供します。
 
 ローカルのMisskey応答を確認するには、別のターミナルで `npm run mock:misskey` を実行し、
-`MISSKEY_BASE_URL=http://127.0.0.1:4100 npm run dev` として起動します。モックには `alice` のプロフィールと
-固定PNGアバターが用意されています。
+`MISSKEY_BASE_URL=http://127.0.0.1:4100 npm run dev` として起動します。モックは
+`MOCK_MISSKEY_HOST`（既定値 `0.0.0.0`）と `MOCK_MISSKEY_PORT`（既定値 `4100`）で待ち受け先を変更できます。
+固定PNGアバターと、次の確認用プロフィールが用意されています。`× 20` は同じ文字列を20回連結することを示します。
+
+| 入力エイリアス | 表示名 | 返されるユーザー名 |
+| --- | --- | --- |
+| `alice` | `Alice` | `alice` |
+| `longname` | `長い表示名` × 20 | `longname` |
+| `longid` | `Alice` | `long_account_` × 20 |
+| `longboth` | `長い表示名` × 20 | `long_both_` × 20 |
+
+長いユーザー名を返す2つのプロフィールは、入力エイリアスに加えて返却されたユーザー名そのものでも検索できます。
 
 ライブラリとして利用する場合は、接続先を明示してユーザー情報とアバターを取得できます。
 
@@ -107,3 +117,13 @@ docker run --rm -p 3000:3000 \
 GitHub Actions は `master` への push を 7 文字の短縮コミット SHA で、形式が
 `X.Y.Z` または `X.Y.Z-rc.1` などの SemVer prerelease タグを同じタグ名で
 GitHub Container Registry へ公開します。`v` プレフィックスや build metadata は対象外です。
+
+## Cloudflare Tunnel 公開時のキャッシュ
+
+HTMLと `/assets/` の静的ファイルは `Cache-Control: no-cache` を返し、再利用前の確認を要求します。
+静的ファイルは既存のETag・Last-Modifiedによる条件付き取得を利用します。
+`POST /cards` の生成結果は従来どおり `Cache-Control: no-store` で保存しません。
+
+Cloudflareではオリジンのキャッシュ指定を尊重し、Edge TTL・Browser Cache TTLによる
+強制上書きや、Cache Everythingは設定しないでください。公開時に一度、Tunnel経由の
+HTML・静的ファイル・カード生成レスポンスの `Cache-Control` と `CF-Cache-Status` を確認します。
