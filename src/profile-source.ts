@@ -15,11 +15,13 @@ export interface ProfileSource {
 }
 
 import { MisskeyClient, MisskeyError, type MisskeyUserInfo } from './misskey-client.js';
+import { normalizeRoleUsername } from './roles.js';
 
 export class MisskeyProfileSource implements ProfileSource {
   constructor(
     private readonly client: MisskeyClient,
     private readonly onUpstreamRateLimited?: (error: MisskeyError) => void,
+    private readonly appRoles: ReadonlyMap<string, string> = new Map(),
   ) {}
 
   private notifyRateLimited(error: unknown): void {
@@ -41,6 +43,11 @@ export class MisskeyProfileSource implements ProfileSource {
       throw error;
     }
     const profile = profileFromMisskeyUser(user);
+    const normalizedUsername = normalizeRoleUsername(user.username);
+    if (normalizedUsername !== undefined) {
+      const appRole = this.appRoles.get(normalizedUsername);
+      if (appRole !== undefined) profile.appRole = appRole;
+    }
     try {
       const avatar = await this.client.getAvatar(user);
       if (avatar) profile.avatar = avatar.data;

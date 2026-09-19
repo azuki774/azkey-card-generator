@@ -11,7 +11,7 @@ rasterized by Sharp.
 | Placeholder mark | x960, y40, 176 × 176 | existing `front/icons/placeholder.svg` |
 | Avatar | x64, y224, 320 × 320 | cover crop, 24px radius |
 | Profile panel | x408, y200, 728 × 368 | white, 92% opacity, 24px radius |
-| App role | x432, y224, w664, h48 | 32px; omitted when empty |
+| App role | x432, y248, w664, h48 | 32px; omitted when empty |
 | Display name | x432, y336, w664, h72 | 48px down to 36px bold |
 | Handle | x432, y432, w664, h56 | 40px down to 32px |
 | Issuance date (UTC) | right edge x1136, y656, w704 | `YYYY-MM-DD`, no label, fixed 16px, right aligned |

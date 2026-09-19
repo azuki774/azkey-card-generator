@@ -56,6 +56,29 @@ test('MisskeyProfileSource attaches a downloaded avatar to the profile', async (
   assert.deepEqual(profile.avatar, avatar);
 });
 
+test('MisskeyProfileSource matches roles against the API username, not the input or internal ID', async () => {
+  const source = new MisskeyProfileSource(clientStub({
+    getUserInfo: async () => ({ id: 'alice', username: 'AlIcE', name: 'Alice', notesCount: 3, avatarUrl: null }),
+    getAvatar: async () => null,
+  }), undefined, new Map([
+    ['alice', '対象'],
+    ['input-name', '入力値の役職'],
+  ]));
+
+  const profile = await source.getProfile('@input-name');
+  assert.equal(profile.appRole, '対象');
+});
+
+test('MisskeyProfileSource leaves non-target API usernames without a role', async () => {
+  const source = new MisskeyProfileSource(clientStub({
+    getUserInfo: async () => ({ id: 'alice', username: 'not-target', name: 'Alice', notesCount: 3, avatarUrl: null }),
+    getAvatar: async () => null,
+  }), undefined, new Map([['alice', '対象']]));
+
+  const profile = await source.getProfile('@alice');
+  assert.equal(profile.appRole, undefined);
+});
+
 test('MisskeyProfileSource continues without an avatar when download returns null or fails', async () => {
   const user = { id: 'id', username: 'alice', name: 'Alice', notesCount: 3, avatarUrl: null };
   const nullSource = new MisskeyProfileSource(clientStub({ getUserInfo: async () => user, getAvatar: async () => null }));
