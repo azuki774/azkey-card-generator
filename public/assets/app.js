@@ -9,6 +9,18 @@
   const sides = ['front', 'back'];
   let objectUrls = [];
 
+  // Repeated-click guard (UI-only): one in-flight request plus a short
+  // cooldown after each completed request. Direct API clients, reloads, and
+  // multiple tabs bypass this; the server only bounds global concurrency
+  // and upstream 429 backoff.
+  const COOLDOWN_MS = 3_000;
+  const MAX_COOLDOWN_MS = 300_000;
+  let generating = false;
+  let cooldownUntil = 0;
+  let cooldownTimer = null;
+  const buttonLabel = submitButton instanceof HTMLButtonElement ? submitButton.querySelector('span') : null;
+  const buttonOriginalText = buttonLabel instanceof HTMLElement ? buttonLabel.textContent : null;
+
   const normalizeUsernameInput = (value) => {
     const trimmed = value.trim();
     return trimmed.startsWith('@') && !trimmed.startsWith('@@') ? trimmed.slice(1) : trimmed;
@@ -54,9 +66,73 @@
     }
   };
 
-  const setBusy = (busy) => {
-    form.toggleAttribute('aria-busy', busy);
-    if (submitButton instanceof HTMLButtonElement) submitButton.disabled = busy;
+  const isCooling = () => Date.now() < cooldownUntil;
+
+  const updateButton = () => {
+    const disabled = generating || isCooling();
+    if (submitButton instanceof HTMLButtonElement) submitButton.disabled = disabled;
+    if (buttonLabel instanceof HTMLElement && buttonOriginalText !== null) {
+      buttonLabel.textContent = disabled ? 'しばらくお待ちください' : buttonOriginalText;
+    }
+  };
+
+  const setGenerating = (busy) => {
+    generating = busy;
+    if (busy) form.setAttribute('aria-busy', 'true');
+    else form.removeAttribute('aria-busy');
+    updateButton();
+  };
+
+  const renderCooldown = () => {
+    const remainingMs = cooldownUntil - Date.now();
+    if (remainingMs <= 0) {
+      if (cooldownTimer !== null) {
+        clearTimeout(cooldownTimer);
+        cooldownTimer = null;
+      }
+      cooldownUntil = 0;
+      updateButton();
+      return;
+    }
+    updateButton();
+    if (cooldownTimer !== null) clearTimeout(cooldownTimer);
+    cooldownTimer = setTimeout(renderCooldown, remainingMs);
+  };
+
+  const startCooldown = (delayMs) => {
+    const sane = Number.isFinite(delayMs) ? Math.floor(delayMs) : COOLDOWN_MS;
+    const bounded = Math.min(Math.max(sane, COOLDOWN_MS), MAX_COOLDOWN_MS);
+    cooldownUntil = Date.now() + bounded;
+    renderCooldown();
+  };
+
+  const parseRetryAfterMs = (header) => {
+    if (header == null) return undefined;
+    const trimmed = String(header).trim();
+    if (!trimmed || trimmed.length > 200) return undefined;
+    if (/^\d+$/.test(trimmed)) {
+      const seconds = Number(trimmed);
+      if (!Number.isSafeInteger(seconds) || seconds < 0) return undefined;
+      return Math.min(seconds * 1000, MAX_COOLDOWN_MS);
+    }
+    const dateMs = Date.parse(trimmed);
+    if (!Number.isNaN(dateMs)) {
+      const diff = dateMs - Date.now();
+      if (diff <= 0) return undefined;
+      return Math.min(diff, MAX_COOLDOWN_MS);
+    }
+    return undefined;
+  };
+
+  const cooldownDelayFromResponse = (response) => {
+    try {
+      const header = response.headers?.get?.('Retry-After') ?? response.headers?.get?.('retry-after');
+      const parsed = parseRetryAfterMs(header);
+      if (parsed !== undefined) return Math.max(COOLDOWN_MS, parsed);
+    } catch {
+      // Fall through to the default cooldown below.
+    }
+    return COOLDOWN_MS;
   };
 
   const base64ToBlobUrl = (data, mediaType) => {
@@ -91,30 +167,49 @@
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    // Guard every submit path (button, Enter key, programmatic submit):
+    // a disabled button alone does not stop those.
+    if (generating || isCooling()) return;
     if (usernameInput instanceof HTMLInputElement) usernameInput.value = normalizeUsernameInput(usernameInput.value);
+    // A validation failure happens before any request, so it never starts
+    // the post-request cooldown.
     if (!form.reportValidity()) return;
 
+    // A background tab may delay the expiry timer beyond the deadline.
+    // Clear that old timer before it can overwrite the next request's status.
+    renderCooldown();
     resetCards();
     if (errorMessage instanceof HTMLElement) {
       errorMessage.hidden = true;
       errorMessage.textContent = '';
     }
-    status.textContent = '生成中';
-    setBusy(true);
+    status.textContent = 'しばらくお待ちください';
+    setGenerating(true);
 
+    let cooldownDelayMs = COOLDOWN_MS;
     try {
       const response = await fetch('/cards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams(new FormData(form)),
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error?.message ?? 'カード画像を生成できませんでした。');
+      // Preserve server backoff even when the response body is not JSON.
+      if (response.status === 429) cooldownDelayMs = cooldownDelayFromResponse(response);
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch {
+        throw new Error('カード画像を生成できませんでした。');
+      }
+      if (!response.ok) {
+        throw new Error(payload?.error?.message ?? 'カード画像を生成できませんでした。');
+      }
 
       showCard('front', payload.cards?.front);
       showCard('back', payload.cards?.back);
       status.textContent = '生成済み';
     } catch (error) {
+      // A network failure has no response; keep the sane default cooldown.
       resetCards();
       status.textContent = '生成失敗';
       if (errorMessage instanceof HTMLElement) {
@@ -122,9 +217,18 @@
         errorMessage.hidden = false;
       }
     } finally {
-      setBusy(false);
+      // End the generating state first (clears aria-busy), then start the
+      // post-request cooldown which keeps the same disabled button label
+      // while leaving preview/results/downloads intact.
+      setGenerating(false);
+      startCooldown(cooldownDelayMs);
     }
   });
 
-  window.addEventListener('pagehide', resetCards);
+  // Page lifecycle: clearing previews on hide is fine, but never cancel the
+  // in-flight/cooldown guard here. The submit handler owns that state, so a
+  // hide during a request cannot re-enable the button early.
+  window.addEventListener('pagehide', () => {
+    if (!generating) resetCards();
+  });
 })();

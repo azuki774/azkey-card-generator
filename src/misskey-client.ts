@@ -26,9 +26,11 @@ export interface Avatar {
 export type MisskeyErrorKind = 'not_found' | 'rate_limited' | 'upstream' | 'invalid_response' | 'timeout' | 'avatar_rejected';
 
 export class MisskeyError extends Error {
-  constructor(public readonly kind: MisskeyErrorKind, message: string, options?: ErrorOptions) {
+  readonly retryAfterHeader: string | null | undefined;
+  constructor(public readonly kind: MisskeyErrorKind, message: string, options?: ErrorOptions & { retryAfterHeader?: string | null }) {
     super(message, options);
     this.name = 'MisskeyError';
+    this.retryAfterHeader = options?.retryAfterHeader;
   }
 }
 
@@ -92,7 +94,11 @@ export class MisskeyClient {
     }, MAX_JSON_BYTES);
     if (!response.ok) {
       if (response.status === 404) throw new MisskeyError('not_found', 'Misskey user was not found');
-      if (response.status === 429) throw new MisskeyError('rate_limited', 'Misskey rate limit exceeded');
+      if (response.status === 429) {
+        throw new MisskeyError('rate_limited', 'Misskey rate limit exceeded', {
+          retryAfterHeader: response.headers.get('retry-after'),
+        });
+      }
       throw new MisskeyError('upstream', `Misskey returned HTTP ${response.status}`);
     }
     let value: unknown;
@@ -123,7 +129,14 @@ export class MisskeyClient {
       throw new MisskeyError('avatar_rejected', 'Avatar origin is not allowed');
     }
     const { response, data } = await this.request(avatarUrl.toString(), { method: 'GET', headers: { accept: [...AVATAR_TYPES].join(',') } }, MAX_AVATAR_BYTES);
-    if (!response.ok) throw new MisskeyError('upstream', `Avatar returned HTTP ${response.status}`);
+    if (!response.ok) {
+      if (response.status === 429) {
+        throw new MisskeyError('rate_limited', 'Avatar rate limit exceeded', {
+          retryAfterHeader: response.headers.get('retry-after'),
+        });
+      }
+      throw new MisskeyError('upstream', `Avatar returned HTTP ${response.status}`);
+    }
     const contentType = (response.headers.get('content-type') ?? '').split(';', 1)[0].trim().toLowerCase();
     if (!AVATAR_TYPES.has(contentType)) throw new MisskeyError('avatar_rejected', 'Avatar content type is not supported');
     try {
