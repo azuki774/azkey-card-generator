@@ -30,6 +30,7 @@ COPY --from=builder /app/dist ./dist
 COPY templates ./templates
 COPY public ./public
 COPY fontconfig ./fontconfig
+COPY config ./config
 COPY --from=fonts /usr/share/doc/fonts-noto-cjk/copyright /usr/share/doc/fonts-noto-cjk/copyright
 COPY --from=fonts /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc
 COPY --from=fonts /usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc /usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc

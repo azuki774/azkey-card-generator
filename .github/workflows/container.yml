@@ -39,6 +39,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate role data
+        run: npm run roles:validate -- config/roles.csv.b64
+
       - name: Test
         run: npm test
 

@@ -11,12 +11,15 @@
     "test": "tsx --test tests/*.test.ts",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "mock:misskey": "tsx src/mock-misskey.ts"
+    "mock:misskey": "tsx src/mock-misskey.ts",
+    "roles:encode": "tsx src/roles-encode.ts",
+    "roles:validate": "tsx src/roles-validate.ts"
   },
   "dependencies": {
     "@fastify/formbody": "^9.0.0",
     "@fastify/static": "^10.1.3",
     "@fastify/view": "^12.0.0",
+    "csv-parse": "^7.0.2",
     "ejs": "^6.0.1",
     "fastify": "^5.0.0",
     "sharp": "^0.35.4"

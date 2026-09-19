@@ -24,7 +24,7 @@ const fontFamily = 'Noto Sans CJK JP';
 const FRONT = {
   title: { x: 64, y: 40, width: 800, size: 48, weight: 700, height: 64 }, logo: { x: 960, y: 40, size: 176 },
   avatar: { x: 64, y: 224, size: 320, radius: 24 }, panel: { x: 408, y: 200, width: 728, height: 368, radius: 24 },
-  role: { x: 432, y: 224, width: 664, size: 32, minSize: 32, weight: 700, height: 48 }, name: { x: 432, y: 336, width: 664, size: 48, minSize: 24, weight: 800, height: 72 }, handle: { x: 432, y: 432, width: 664, size: 40, minSize: 24, weight: 700, height: 56 },
+  role: { x: 432, y: 248, width: 664, size: 32, minSize: 32, weight: 700, height: 48 }, name: { x: 432, y: 336, width: 664, size: 48, minSize: 24, weight: 800, height: 72 }, handle: { x: 432, y: 432, width: 664, size: 40, minSize: 24, weight: 700, height: 56 },
   issuedAt: { x: 1136, y: 656, width: 704, size: 16, minSize: 16, weight: 500 },
   cardId: { x: 1136, y: 696, width: 704, size: 16, minSize: 16, weight: 500 },
 } as const;

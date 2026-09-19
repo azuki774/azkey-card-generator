@@ -21,6 +21,15 @@ test('missing and corrupt avatars produce the same fallback front', async () => 
   assert.deepEqual(corrupt, missing);
 });
 
+test('front renders a non-empty appRole and omits missing or blank roles', async () => {
+  const missing = await decoded((await renderCards(baseProfile, date)).front);
+  const blank = await decoded((await renderCards({ ...baseProfile, appRole: '   ' }, date)).front);
+  const present = await decoded((await renderCards({ ...baseProfile, appRole: '開発リード' }, date)).front);
+
+  assert.deepEqual(blank, missing);
+  assert.notDeepEqual(present, missing);
+});
+
 async function stripedAvatar(): Promise<Buffer> {
   return sharp({ create: { width: 640, height: 160, channels: 3, background: { r: 240, g: 30, b: 30 } } })
     .composite([
