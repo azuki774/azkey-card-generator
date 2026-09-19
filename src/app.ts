@@ -69,10 +69,14 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   app.register(fastifyStatic, {
     root: publicDirectory,
     prefix: '/assets/',
+    cacheControl: false,
+    setHeaders(reply) {
+      reply.header('Cache-Control', 'no-cache');
+    },
   });
   app.register(fastifyFormbody);
 
-  app.get('/', async (_request, reply) => reply.viewAsync('index.ejs'));
+  app.get('/', async (_request, reply) => reply.header('Cache-Control', 'no-cache').viewAsync('index.ejs'));
 
   // TODO: Misskey への問い合わせと画像生成の前に、送信元 IP 単位のレート制限と
   // サーバー全体の同時実行数制限を設ける。プロキシ配下では信頼する転送元を明示し、

@@ -61,6 +61,7 @@ test('GET / returns the front/back generator page', async () => {
     const response = await app.inject({ method: 'GET', url: '/' });
     assert.equal(response.statusCode, 200);
     assert.match(response.headers['content-type'] ?? '', /^text\/html/);
+    assert.equal(response.headers['cache-control'], 'no-cache');
     assert.match(response.body, /<script src="\/assets\/app\.js" defer><\/script>/);
     assert.match(response.body, /<h2>カードプレビュー<\/h2>/);
     assert.match(response.body, /class="input-prefix"[^>]*>@<\/span>/);
@@ -108,9 +109,11 @@ test('static assets are served', async () => {
       app.inject({ method: 'GET', url: '/assets/app.js' }),
     ]);
     assert.equal(styles.statusCode, 200);
+    assert.equal(styles.headers['cache-control'], 'no-cache');
     assert.match(styles.headers['content-type'] ?? '', /^text\/css/);
     assert.match(styles.body, /\[hidden\]\s*\{\s*display:\s*none\s*!important;\s*\}/);
     assert.equal(script.statusCode, 200);
+    assert.equal(script.headers['cache-control'], 'no-cache');
     assert.match(script.headers['content-type'] ?? '', /^application\/javascript/);
     assert.match(script.body, /fetch\('\/cards'/);
     assert.match(script.body, /URL\.createObjectURL/);
