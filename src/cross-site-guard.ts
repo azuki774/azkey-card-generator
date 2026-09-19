@@ -22,11 +22,11 @@ function sendCrossSiteForbidden(reply: FastifyReply) {
     });
 }
 
-// Route-attached preHandler for POST /cards. Attached via the route options in
-// app.ts, so Fastify routing (including query strings and encoded paths that
-// resolve to /cards) decides coverage — this hook never matches on raw
-// request.url and therefore cannot be bypassed with e.g. "/cards?x=1".
+// Match the resolved route, not request.url: query strings and encoded paths
+// resolving to POST /cards receive exactly the same protection.
 export async function guardCrossSiteCardsRequest(request: FastifyRequest, reply: FastifyReply) {
+  if (request.method !== 'POST' || request.routeOptions.url !== '/cards') return;
+
   // Fetch Metadata: allow browsers only when the request is same-origin.
   // Absent metadata (e.g. curl / direct clients) falls through to the
   // dedicated-header check below. same-site / none / cross-site are rejected

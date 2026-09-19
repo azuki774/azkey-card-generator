@@ -11,7 +11,7 @@ site could cause a victim's browser to *send* such a POST (classic form /
 ## What this change does
 
 - Requires the dedicated header `X-Card-Request: 1` on **every** `POST /cards`
-  request, checked in a route-attached `preHandler` before profile lookup and
+  request, checked in a `preHandler` before profile lookup and
   rendering. Missing or wrong values return a generic `403` JSON body with
   `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
 - The browser client (`public/assets/app.js`) sends that header via
@@ -67,7 +67,8 @@ curl -X POST http://127.0.0.1:3000/cards \
 ## Implementation notes
 
 - Guard lives in `src/cross-site-guard.ts` (`guardCrossSiteCardsRequest`) and
-  is attached via the route option
-  `app.post('/cards', { preHandler: guardCrossSiteCardsRequest }, ...)`.
-  Route attachment (rather than string-matching `request.url`) ensures query
-  strings and encoded variants resolving to `/cards` are all protected.
+  is registered as a `preHandler`. It checks the HTTP method and Fastify's
+  resolved `request.routeOptions.url`, not the raw `request.url`. Query
+  strings and encoded variants resolving to `/cards` are all protected;
+  other routes are unaffected. This keeps the hook independent of the
+  generation handler and its rate-limit logic.
