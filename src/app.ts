@@ -125,10 +125,14 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   app.register(fastifyStatic, {
     root: publicDirectory,
     prefix: '/assets/',
+    cacheControl: false,
+    setHeaders(reply) {
+      reply.header('Cache-Control', 'no-cache');
+    },
   });
   app.register(fastifyFormbody);
 
-  app.get('/', async (_request, reply) => reply.viewAsync('index.ejs'));
+  app.get('/', async (_request, reply) => reply.header('Cache-Control', 'no-cache').viewAsync('index.ejs'));
 
   app.post('/cards', async (request, reply) => {
     const body = (request.body ?? {}) as CardFormBody;

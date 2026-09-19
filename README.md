@@ -73,3 +73,13 @@ docker run --rm -p 3000:3000 azkey-card-generator
 GitHub Actions は `master` への push を 7 文字の短縮コミット SHA で、形式が
 `X.Y.Z` または `X.Y.Z-rc.1` などの SemVer prerelease タグを同じタグ名で
 GitHub Container Registry へ公開します。`v` プレフィックスや build metadata は対象外です。
+
+## Cloudflare Tunnel 公開時のキャッシュ
+
+HTMLと `/assets/` の静的ファイルは `Cache-Control: no-cache` を返し、再利用前の確認を要求します。
+静的ファイルは既存のETag・Last-Modifiedによる条件付き取得を利用します。
+`POST /cards` の生成結果は従来どおり `Cache-Control: no-store` で保存しません。
+
+Cloudflareではオリジンのキャッシュ指定を尊重し、Edge TTL・Browser Cache TTLによる
+強制上書きや、Cache Everythingは設定しないでください。公開時に一度、Tunnel経由の
+HTML・静的ファイル・カード生成レスポンスの `Cache-Control` と `CF-Cache-Status` を確認します。
