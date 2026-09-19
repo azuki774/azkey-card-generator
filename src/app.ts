@@ -7,6 +7,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { renderCards, type RenderedCards } from './card-renderer.js';
+import { guardCrossSiteCardsRequest } from './cross-site-guard.js';
 import { type Profile, type ProfileSource } from './profile-source.js';
 import { MisskeyError } from './misskey-client.js';
 
@@ -77,7 +78,9 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   // TODO: Misskey への問い合わせと画像生成の前に、送信元 IP 単位のレート制限と
   // サーバー全体の同時実行数制限を設ける。プロキシ配下では信頼する転送元を明示し、
   // 制限超過時は 429 と Retry-After を返す。
-  app.post('/cards', async (request, reply) => {
+  // Cross-site guard is attached to the route (not a raw-URL global hook) so
+  // every matched POST /cards — including query strings — is protected.
+  app.post('/cards', { preHandler: guardCrossSiteCardsRequest }, async (request, reply) => {
     const body = (request.body ?? {}) as CardFormBody;
     const username = normalizeUsername(body.username);
     if (!usernamePattern.test(username)) {
