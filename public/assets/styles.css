@@ -40,9 +40,10 @@ h1 span { color:transparent; background:linear-gradient(90deg,var(--purple),#bb6
 .input-wrap input::placeholder { color:#c5c1cc; }
 .form-error { margin:16px 0 0; padding:10px 12px; color:#a63e73; border:1px solid #f2c9dd; border-radius:8px; background:#fff4f9; font-size:11px; line-height:1.6; }
 .primary-button { display:flex; width:100%; height:53px; align-items:center; justify-content:space-between; margin-top:24px; padding:0 19px 0 22px; color:white; border:0; border-radius:12px; background:linear-gradient(100deg,#7351f1,#a15adc); box-shadow:0 10px 19px rgba(119,73,225,.23); cursor:pointer; font:inherit; font-size:13px; font-weight:700; transition:transform .2s,box-shadow .2s; }
-.primary-button:hover { transform:translateY(-2px); box-shadow:0 13px 23px rgba(119,73,225,.3); }
-.primary-button:active { transform:translateY(0); }
-.primary-button:disabled { cursor:wait; opacity:.72; transform:none; }
+.primary-button:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 13px 23px rgba(119,73,225,.3); }
+.primary-button:active:not(:disabled) { transform:translateY(0); }
+.primary-button:disabled { cursor:not-allowed; color:#66616f; background:#e5e4eb; box-shadow:none; opacity:1; transform:none; }
+.primary-button:disabled .button-arrow { visibility:hidden; }
 .button-arrow { display:grid; width:25px; height:25px; place-items:center; border:1px solid rgba(255,255,255,.35); border-radius:50%; font-size:18px; font-weight:400; }
 .privacy-note { display:flex; gap:6px; margin:26px 0 0; color:#716b7d; font-size:12px; line-height:1.6; }
 .lock-icon { color:#9a92b8; font-size:15px; }
