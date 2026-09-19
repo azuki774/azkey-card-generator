@@ -7,6 +7,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { renderCards, type RenderedCards } from './card-renderer.js';
+import { guardCrossSiteCardsRequest } from './cross-site-guard.js';
 import { type Profile, type ProfileSource } from './profile-source.js';
 import { MisskeyError } from './misskey-client.js';
 import {
@@ -120,6 +121,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     engine: { ejs },
     root: templatesDirectory,
   });
+  app.addHook('preHandler', guardCrossSiteCardsRequest);
   app.register(fastifyStatic, {
     root: publicDirectory,
     prefix: '/assets/',

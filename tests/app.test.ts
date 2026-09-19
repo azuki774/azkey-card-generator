@@ -113,6 +113,7 @@ test('static assets are served', async () => {
     assert.equal(script.statusCode, 200);
     assert.match(script.headers['content-type'] ?? '', /^application\/javascript/);
     assert.match(script.body, /fetch\('\/cards'/);
+    assert.match(script.body, /X-Card-Request/);
     assert.match(script.body, /URL\.createObjectURL/);
     assert.match(script.body, /URL\.revokeObjectURL/);
     assert.match(script.body, /new Blob/);
@@ -133,7 +134,7 @@ test('POST /cards returns both PNG cards using the documented JSON contract', as
       method: 'POST',
       url: '/cards',
       payload: 'username=%20%40alice%20',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-card-request': '1' },
     });
     assert.equal(response.statusCode, 200);
     assert.match(response.headers['content-type'] ?? '', /^application\/json/);
@@ -169,7 +170,7 @@ test('POST /cards normalizes an unprefixed username before loading the profile',
           method: 'POST',
           url: '/cards',
           payload: new URLSearchParams({ username: ` ${prefix}${name} ` }).toString(),
-          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-card-request': '1' },
         });
         assert.equal(response.statusCode, 200);
         assert.equal(loadedUsername, `@${name}`);
@@ -188,7 +189,7 @@ test('POST /cards rejects malformed usernames after optional @ normalization', a
         method: 'POST',
         url: '/cards',
         payload: `username=${encodeURIComponent(username)}`,
-        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-card-request': '1' },
       });
       assert.equal(response.statusCode, 400, username);
       assert.equal(response.json().error.code, 'invalid_username', username);
@@ -205,7 +206,7 @@ test('POST /cards rejects invalid usernames with JSON', async () => {
       method: 'POST',
       url: '/cards',
       payload: 'username=alice%3Cscript%3E',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-card-request': '1' },
     });
     assert.equal(response.statusCode, 400);
     assert.deepEqual(response.json().error.code, 'invalid_username');
@@ -222,7 +223,7 @@ test('renderer failures return a safe JSON error', async () => {
       method: 'POST',
       url: '/cards',
       payload: 'username=%40alice',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-card-request': '1' },
     });
     assert.equal(response.statusCode, 500);
     assert.equal(response.json().error.code, 'image_generation_failed');
@@ -267,7 +268,7 @@ test('real mock HTTP supplies user/avatar and /cards generates both PNGs', async
     const avatar = await client.getAvatar(user); assert.ok(avatar);
     assert.equal((await (await import('sharp')).default(avatar.data).metadata()).format, 'png');
     const app = buildApp({ profileSource: new MisskeyProfileSource(client) });
-    const response = await app.inject({ method: 'POST', url: '/cards', payload: 'username=alice', headers: { 'content-type': 'application/x-www-form-urlencoded' } });
+    const response = await app.inject({ method: 'POST', url: '/cards', payload: 'username=alice', headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-card-request': '1' } });
     assert.equal(response.statusCode, 200);
     const result = response.json();
     assert.equal((await (await import('sharp')).default(Buffer.from(result.cards.front.data, 'base64')).metadata()).width, 1200);
@@ -283,7 +284,7 @@ test('/cards maps profile source failures to safe status codes', async () => {
   ] as const) {
     const app = buildApp({ profileSource: { getProfile: async () => { throw new MisskeyError(kind, 'internal'); } } });
     try {
-      const response = await app.inject({ method: 'POST', url: '/cards', payload: 'username=alice', headers: { 'content-type': 'application/x-www-form-urlencoded' } });
+      const response = await app.inject({ method: 'POST', url: '/cards', payload: 'username=alice', headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-card-request': '1' } });
       assert.equal(response.statusCode, status); assert.equal(response.json().error.code, code);
     } finally { await app.close(); }
   }
@@ -302,13 +303,206 @@ test('reissuing a card changes filenames and uses the rendered UUID', async () =
   });
   try {
     for (let index = 0; index < 2; index++) {
-      const response = await app.inject({ method: 'POST', url: '/cards', payload: { username: 'alice' } });
+      const response = await app.inject({ method: 'POST', url: '/cards', payload: { username: 'alice' }, headers: { 'x-card-request': '1' } });
       assert.equal(response.statusCode, 200);
       const { cards } = response.json();
       assert.equal(cards.front.fileName, `front-azkcard-${issuedIds[index]}.png`);
       assert.equal(cards.back.fileName, `back-azkcard-${issuedIds[index]}.png`);
     }
     assert.notEqual(issuedIds[0], issuedIds[1]);
+  } finally {
+    await app.close();
+  }
+});
+
+test('POST /cards rejects requests without the dedicated header before loading the profile', async () => {
+  let calls = 0;
+  const app = buildApp({
+    profileSource: {
+      getProfile: async (username: string) => {
+        calls += 1;
+        return { username, displayName: 'Alice', notesCount: 0 };
+      },
+    },
+    render: async () => {
+      calls += 1;
+      return { cardId: '93e97edb-b33e-4af6-a6e1-fad674a5b11b', front: Buffer.from('front-png'), back: Buffer.from('back-png') };
+    },
+  });
+  try {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/cards',
+      payload: 'username=%40alice',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    });
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.headers['cache-control'], 'no-store');
+    assert.equal(response.headers['x-content-type-options'], 'nosniff');
+    assert.match(response.headers['content-type'] ?? '', /^application\/json/);
+    assert.equal(response.json().error.code, 'forbidden');
+    assert.equal(calls, 0);
+  } finally {
+    await app.close();
+  }
+});
+
+test('POST /cards rejects a wrong dedicated header value before loading the profile', async () => {
+  let calls = 0;
+  const app = buildApp({
+    profileSource: {
+      getProfile: async (username: string) => {
+        calls += 1;
+        return { username, displayName: 'Alice', notesCount: 0 };
+      },
+    },
+    render: async () => {
+      calls += 1;
+      return { cardId: '93e97edb-b33e-4af6-a6e1-fad674a5b11b', front: Buffer.from('front-png'), back: Buffer.from('back-png') };
+    },
+  });
+  try {
+    for (const value of ['0', 'true', '']) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/cards',
+        payload: 'username=%40alice',
+        headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-card-request': value },
+      });
+      assert.equal(response.statusCode, 403, value);
+      assert.equal(response.json().error.code, 'forbidden', value);
+    }
+    assert.equal(calls, 0);
+  } finally {
+    await app.close();
+  }
+});
+
+test('POST /cards rejects cross-site Fetch Metadata even with the dedicated header', async () => {
+  let calls = 0;
+  const app = buildApp({
+    profileSource: {
+      getProfile: async (username: string) => {
+        calls += 1;
+        return { username, displayName: 'Alice', notesCount: 0 };
+      },
+    },
+    render: async () => {
+      calls += 1;
+      return { cardId: '93e97edb-b33e-4af6-a6e1-fad674a5b11b', front: Buffer.from('front-png'), back: Buffer.from('back-png') };
+    },
+  });
+  try {
+    for (const site of ['cross-site', 'same-site', 'none']) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/cards',
+        payload: 'username=%40alice',
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'x-card-request': '1',
+          'sec-fetch-site': site,
+        },
+      });
+      assert.equal(response.statusCode, 403, site);
+      assert.equal(response.headers['cache-control'], 'no-store', site);
+      assert.equal(response.headers['x-content-type-options'], 'nosniff', site);
+      assert.equal(response.json().error.code, 'forbidden', site);
+    }
+    assert.equal(calls, 0);
+  } finally {
+    await app.close();
+  }
+});
+
+test('POST /cards allows same-origin Fetch Metadata with the dedicated header', async () => {
+  const app = buildApp({
+    profileSource: stubProfileSource,
+    render: async () => ({ cardId: '93e97edb-b33e-4af6-a6e1-fad674a5b11b', front: Buffer.from('front-png'), back: Buffer.from('back-png') }),
+  });
+  try {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/cards',
+      payload: 'username=%40alice',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'x-card-request': '1',
+        'sec-fetch-site': 'same-origin',
+      },
+    });
+    assert.equal(response.statusCode, 200);
+  } finally {
+    await app.close();
+  }
+});
+
+test('POST /cards allows JSON with the dedicated header and no Fetch Metadata (direct client)', async () => {
+  const app = buildApp({
+    profileSource: stubProfileSource,
+    render: async () => ({ cardId: '93e97edb-b33e-4af6-a6e1-fad674a5b11b', front: Buffer.from('front-png'), back: Buffer.from('back-png') }),
+  });
+  try {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/cards',
+      payload: { username: 'alice' },
+      headers: { 'x-card-request': '1' },
+    });
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.headers['cache-control'], 'no-store');
+  } finally {
+    await app.close();
+  }
+});
+
+test('POST /cards with a query string is guarded the same as the bare route', async () => {
+  let calls = 0;
+  const app = buildApp({
+    profileSource: {
+      getProfile: async (username: string) => {
+        calls += 1;
+        return { username, displayName: 'Alice', notesCount: 0 };
+      },
+    },
+    render: async () => ({ cardId: '93e97edb-b33e-4af6-a6e1-fad674a5b11b', front: Buffer.from('front-png'), back: Buffer.from('back-png') }),
+  });
+  try {
+    const denied = await app.inject({
+      method: 'POST',
+      url: '/cards?next=/cards',
+      payload: 'username=%40alice',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    });
+    assert.equal(denied.statusCode, 403);
+    assert.equal(denied.json().error.code, 'forbidden');
+    const allowed = await app.inject({
+      method: 'POST',
+      url: '/cards?next=/cards',
+      payload: 'username=%40alice',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-card-request': '1' },
+    });
+    assert.equal(allowed.statusCode, 200);
+    assert.equal(calls, 1);
+  } finally {
+    await app.close();
+  }
+});
+
+test('untrusted Origin preflight for /cards is never granted CORS access', async () => {
+  const app = buildApp({ profileSource: stubProfileSource });
+  try {
+    const response = await app.inject({
+      method: 'OPTIONS',
+      url: '/cards',
+      headers: {
+        origin: 'https://evil.example',
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'x-card-request',
+      },
+    });
+    assert.equal(response.headers['access-control-allow-origin'], undefined);
+    assert.equal(response.headers['access-control-allow-headers'], undefined);
   } finally {
     await app.close();
   }

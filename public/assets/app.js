@@ -190,7 +190,7 @@
     try {
       const response = await fetch('/cards', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Card-Request': '1' },
         body: new URLSearchParams(new FormData(form)),
       });
       // Preserve server backoff even when the response body is not JSON.
