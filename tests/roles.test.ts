@@ -174,8 +174,24 @@ test('reports encoded-file line numbers without exposing usernames or roles', ()
   }
 });
 
-test('loads unset, actual, and missing role files', async () => {
-  assert.deepEqual([...await loadRolesFromEnv({})], []);
+test('loads the bundled role file by default', async () => {
+  const expected = await loadRolesFile(resolve(projectDirectory, 'config/roles.csv.b64'));
+  const actual = await loadRolesFromEnv({});
+  assert.ok(actual.size > 0);
+  assert.ok(actual.size === expected.size && [...expected].every(([username, role]) => actual.get(username) === role));
+});
+
+test('loads the bundled role file independently of the working directory', async () => {
+  await withTemporaryDirectory(async (directory) => {
+    await execFileAsync(process.execPath, ['--import', import.meta.resolve('tsx'), '--input-type=module', '--eval', `
+      import assert from 'node:assert/strict';
+      import { loadRolesFromEnv } from ${JSON.stringify(new URL('../src/roles.ts', import.meta.url).href)};
+      assert.ok((await loadRolesFromEnv({})).size > 0);
+    `], { cwd: directory });
+  });
+});
+
+test('loads overridden role files and rejects empty or missing paths', async () => {
   await assert.rejects(
     () => loadRolesFromEnv({ CARD_ROLES_FILE: '' }),
     (error: unknown) => error instanceof RoleConfigError && /file path is empty/.test(error.message),
@@ -190,7 +206,7 @@ test('loads unset, actual, and missing role files', async () => {
     assert.deepEqual([...await loadRolesFromEnv({ CARD_ROLES_FILE: filePath })], [['alice', '開発']]);
 
     await assert.rejects(
-      () => loadRolesFile(join(directory, 'does-not-exist.b64')),
+      () => loadRolesFromEnv({ CARD_ROLES_FILE: join(directory, 'does-not-exist.b64') }),
       (error: unknown) => error instanceof RoleConfigError && /file could not be read/.test(error.message),
     );
   });
