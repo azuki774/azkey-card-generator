@@ -3,7 +3,20 @@ import sharp from 'sharp';
 const DEFAULT_TIMEOUT_MS = 5_000;
 const MAX_JSON_BYTES = 1_024 * 1_024;
 const MAX_AVATAR_BYTES = 5 * 1_024 * 1_024;
-const MAX_INPUT_PIXELS = 25_000_000;
+// Rendered avatar slot is 320x320px (102_400 pixels). 4M pixels (~39x the
+// output area) leaves ample headroom for cover-crop quality while bounding
+// 8-bit RGBA pixel data to ~16MB (4M * 4 bytes), versus ~100MB at
+// the previous 25M pixel limit. The compressed download cap below is
+// intentionally unchanged: this limit bounds *decoded dimensions*, which a
+// small compressed file can still exceed.
+export const MAX_INPUT_PIXELS = 4_000_000;
+export const AVATAR_SIZE_PX = 320;
+// Native (libvips) per-image processing bound supported by the installed
+// sharp (`pipeline.timeout()`). This is a best-effort processing guard, not
+// a hard end-to-end deadline or a memory bound:
+// resizing does not eliminate decoder working memory (see
+// docs/security-avatar-memory.md).
+export const AVATAR_PROCESS_TIMEOUT_SECONDS = 5;
 const AVATAR_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 
 export interface MisskeyUserInfo {
@@ -127,15 +140,32 @@ export class MisskeyClient {
     const contentType = (response.headers.get('content-type') ?? '').split(';', 1)[0].trim().toLowerCase();
     if (!AVATAR_TYPES.has(contentType)) throw new MisskeyError('avatar_rejected', 'Avatar content type is not supported');
     try {
-      const image = sharp(data, { limitInputPixels: MAX_INPUT_PIXELS });
+      // pages: 1 decodes only the first frame of animated inputs (GIF/WebP),
+      // avoiding full-resolution output for every frame. Header/container
+      // parsing still has a cost even for frames that are not rendered.
+      // Channels are left as decoded (RGB/RGBA); the PNG encoder below
+      // preserves alpha where present.
+      const image = sharp(data, { limitInputPixels: MAX_INPUT_PIXELS, pages: 1 });
       const metadata = await image.metadata();
       const expectedFormat = { 'image/png': 'png', 'image/jpeg': 'jpeg', 'image/webp': 'webp', 'image/gif': 'gif' }[contentType];
       if (!metadata.format || metadata.format !== expectedFormat) throw new Error('image format does not match content type');
-      await image.raw().toBuffer();
+      if (!metadata.width || !metadata.height) throw new Error('image dimensions are missing');
+      // Belt-and-suspenders: limitInputPixels already rejects oversized inputs
+      // at the metadata stage, but re-check explicitly so the bound holds even
+      // if decoder metadata reporting changes.
+      if (metadata.width * metadata.height > MAX_INPUT_PIXELS) throw new Error('image exceeds pixel limit');
+      // Normalize to the exact bounded size the card renderer consumes, so no
+      // full-resolution decode is retained or passed downstream. Center-cover
+      // semantics match the renderer (320x320 cover, centred).
+      const normalized = await image
+        .timeout({ seconds: AVATAR_PROCESS_TIMEOUT_SECONDS })
+        .resize(AVATAR_SIZE_PX, AVATAR_SIZE_PX, { fit: 'cover', position: 'centre' })
+        .png()
+        .toBuffer();
+      return { data: normalized, contentType: 'image/png' };
     } catch (error) {
       throw new MisskeyError('avatar_rejected', 'Avatar is not a valid image', { cause: error });
     }
-    return { data, contentType };
   }
 
   private async request(pathOrUrl: string, init: RequestInit, limit: number): Promise<{ response: Response; data: Buffer }> {
