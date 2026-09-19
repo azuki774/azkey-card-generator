@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
 
 import { parse } from 'csv-parse/sync';
@@ -248,8 +249,7 @@ export async function loadRolesFile(filePath: string): Promise<ReadonlyMap<strin
 }
 
 export async function loadRolesFromEnv(env: Readonly<Record<string, string | undefined>> = process.env): Promise<ReadonlyMap<string, string>> {
-  const filePath = env.CARD_ROLES_FILE;
-  if (filePath === undefined) return new Map<string, string>();
+  const filePath = env.CARD_ROLES_FILE ?? fileURLToPath(new URL('../config/roles.csv.b64', import.meta.url));
   if (!filePath) throw new RoleConfigError('CARD_ROLES_FILE: file path is empty');
   return loadRolesFile(filePath);
 }
