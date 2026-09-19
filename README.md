@@ -16,42 +16,7 @@ azkey（Misskey フォーク）の公開ユーザー情報から、社員証風�
 表面カードの実装座標と文字フィッティングは[表面カードレイアウト](docs/design/front-layout.md)
 に記載しています。
 
-## 役職表示
-
-役職表示は `CARD_ROLES_FILE` を指定した場合だけ有効です。未指定なら対応表は空で、
-役職欄も空欄になります。指定するファイルは、UTF-8 CSV の各レコードを 1 レコードずつ
-Base64 化し、改行で並べたファイルです。ヘッダーも 1 レコードとして先頭に置きます。
-空行は無視しますが、Base64 の途中で折り返したり、復元したレコードに改行を含めたりは
-できません。CSV のヘッダーは厳密に次の形式にします。
-
-```csv
-username,役職名
-alice,開発リード
-bob,"研究,開発"
-```
-
-`username` は内部 ID ではなく、単一のローカル Misskey サーバーの username を `@` なしで
-記載します。大文字小文字は区別されません。リモートユーザー形式や先頭 `@` は使用できません。
-アカウント名を再利用すると新しいアカウントにも同じ役職が表示されるため注意してください。
-Base64 は秘匿化ではありません。ファイル変更後は次回起動時に読み込まれるため、反映には再起動が必要です。
-
-編集する平文 CSV は追跡対象外にしてください。`roles:encode` は CSV 全体を先に検証し、
-各レコードを正しく CSV エスケープしてから Base64 化します。
-
-```sh
-# 行単位で Base64 を復元して編集（roles.csv は .gitignore 済み）
-: > roles.csv
-while IFS= read -r encoded || [ -n "$encoded" ]; do
-  encoded=$(printf '%s' "$encoded" | tr -d '\r\t ')
-  [ -z "$encoded" ] && continue
-  if [ -s roles.csv ]; then printf '\n' >> roles.csv; fi
-  printf '%s' "$encoded" | base64 --decode >> roles.csv
-done < config/roles.csv.b64
-# 編集後に検証・変換
-npm run roles:encode -- roles.csv config/roles.csv.b64
-rm roles.csv
-npm run roles:validate -- config/roles.csv.b64
-```
+`config/roles.csv.b64` は、カードのロール表示用ファイルです。
 
 ## 開発
 
@@ -105,14 +70,7 @@ Misskeyから取得したアバターを表面カードに表示します。ア�
 ```sh
 docker build -t azkey-card-generator .
 docker run --rm -p 3000:3000 azkey-card-generator
-# 役職表示を有効にする場合
-docker run --rm -p 3000:3000 \
-  -e CARD_ROLES_FILE=/app/config/roles.csv.b64 \
-  azkey-card-generator
 ```
-
-コンテナにも `config/roles.csv.b64` を含めていますが、環境変数を
-指定しない限り読み込まれません。
 
 GitHub Actions は `master` への push を 7 文字の短縮コミット SHA で、形式が
 `X.Y.Z` または `X.Y.Z-rc.1` などの SemVer prerelease タグを同じタグ名で
